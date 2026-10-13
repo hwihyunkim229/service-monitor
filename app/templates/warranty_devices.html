@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+{% block page_name %}구매일 관리{% endblock %}
+{% block content %}
+  <style>
+      .warranty-page {
+          max-width: 1180px;
+          margin: 0 auto;
+          color: #24323f
+      }
+
+      .warranty-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 20px;
+          align-items: flex-end;
+          margin-bottom: 22px
+      }
+
+      .warranty-head h2 {
+          margin: 0 0 7px;
+          color: #17252e;
+          font-size: 25px;
+          letter-spacing: -.5px
+      }
+
+      .warranty-head p {
+          margin: 0;
+          color: #71808d;
+          font-size: 13px
+      }
+
+      .back-link {
+          display: inline-flex;
+          align-items: center;
+          padding: 9px 13px;
+          border: 1px solid #d6dfdd;
+          border-radius: 10px;
+          background: #fff;
+          color: #405852;
+          font-size: 12px;
+          font-weight: 700;
+          text-decoration: none;
+          box-shadow: 0 1px 2px rgba(25, 45, 40, .04)
+      }
+
+      .back-link:before {
+          content: '←';
+          margin-right: 6px
+      }
+
+      .summary {
+          overflow: hidden;
+          border: 1px solid #dde5e3;
+          border-radius: 16px;
+          background: #fff;
+          box-shadow: 0 8px 24px rgba(37, 57, 52, .06)
+      }
+
+      .summary-row {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          flex-wrap: wrap;
+          padding: 18px 20px;
+          background: linear-gradient(135deg, #f7faf9 0%, #f2f7f5 100%);
+          border-bottom: 1px solid #e4ebe9
+      }
+
+      .summary-title {
+          margin-right: auto;
+          color: #263b37;
+          font-size: 15px;
+          font-weight: 800
+      }
+
+      .count {
+          padding: 6px 10px;
+          border: 1px solid #cee2dc;
+          border-radius: 999px;
+          background: #fff;
+          color: #35665d;
+          font-size: 12px;
+          font-weight: 700
+      }
+
+      .count.missing {
+          border-color: #ead9c3;
+          background: #fffaf3;
+          color: #98672d
+      }
+
+      .tools {
+          display: grid;
+          grid-template-columns: minmax(240px, 1fr) 160px auto;
+          gap: 9px;
+          padding: 16px 20px
+      }
+
+      .tools input,
+      .tools select {
+          min-width: 0;
+          padding: 10px 12px;
+          border: 1px solid #d5dfdc;
+          border-radius: 10px;
+          background: #fbfcfc;
+          color: #26343e;
+          outline: none
+      }
+
+      .tools input:focus,
+      .tools select:focus,
+      .inline-form input[type=date]:focus {
+          border-color: #729b92;
+          box-shadow: 0 0 0 3px rgba(93, 139, 129, .12)
+      }
+
+      .tools>button,
+      .inline-form>button {
+          border: 0;
+          border-radius: 9px;
+          background: #355f5b;
+          color: #fff;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background .15s, transform .15s
+      }
+
+      .tools>button:hover,
+      .inline-form>button:hover {
+          background: #294e4a;
+          color: #fff
+      }
+
+      .tools>button:active,
+      .inline-form>button:active {
+          transform: translateY(1px)
+      }
+
+      .tools>button {
+          padding: 10px 18px
+      }
+
+      .table-wrap {
+          overflow-x: auto;
+          border-top: 1px solid #edf1f0
+      }
+
+      .device-table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          font-size: 12px
+      }
+
+      .device-table th,
+      .device-table td {
+          padding: 11px 14px;
+          border-bottom: 1px solid #edf1f0;
+          text-align: left;
+          white-space: nowrap
+      }
+
+      .device-table th {
+          position: sticky;
+          top: 0;
+          background: #fafcfb;
+          color: #687872;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: .02em
+      }
+
+      .device-table tbody tr:nth-child(even) {
+          background: #fcfdfd
+      }
+
+      .device-table tbody tr:hover {
+          background: #f4f8f7
+      }
+
+      .device-table td:first-child {
+          color: #253d39;
+          font-weight: 800
+      }
+
+      .hospital {
+          max-width: 270px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          color: #4f5e68
+      }
+
+      .inline-form {
+          display: flex;
+          gap: 7px;
+          align-items: center
+      }
+
+      .inline-form input[type=date] {
+          padding: 7px 9px;
+          border: 1px solid #d5dfdc;
+          border-radius: 8px;
+          background: #fff;
+          color: #33434c;
+          outline: none
+      }
+
+      .inline-form>button {
+          padding: 8px 11px
+      }
+
+      .missing-label {
+          padding: 4px 7px;
+          border-radius: 999px;
+          background: #fff4e5;
+          color: #9a6529;
+          font-size: 10px;
+          font-weight: 800
+      }
+
+      .pagination {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          padding: 15px 20px;
+          background: #fafcfb;
+          color: #6c7b76;
+          font-size: 12px
+      }
+
+      .pagination a {
+          padding: 6px 10px;
+          border: 1px solid #d6dfdd;
+          border-radius: 8px;
+          background: #fff;
+          color: #355f5b;
+          font-weight: 700;
+          text-decoration: none
+      }
+
+      @media(max-width:700px) {
+          .warranty-head {
+              display: block
+          }
+
+          .back-link {
+              margin-top: 12px
+          }
+
+          .tools {
+              grid-template-columns: 1fr;
+              padding: 14px
+          }
+
+          .summary-row {
+              align-items: flex-start
+          }
+
+          .summary-title {
+              width: 100%;
+              margin-bottom: 2px
+          }
+
+          .device-table th,
+          .device-table td {
+              padding: 10px
+          }
+
+          .inline-form {
+              min-width: 260px
+          }
+      }
+  </style>
+  <div class="warranty-page">
+    <div class="warranty-head">
+      <div>
+        <h2>최초 구매일 관리</h2>
+        <p>교품 여부와 관계없이 CX에 접수된 전체 기기의 구매일을 관리합니다.</p>
+      </div>
+      <a class="back-link" href="/{{ product }}/exchange/lineage">교품 계보로 돌아가기</a>
+    </div>
+    <section class="summary">
+      <div class="summary-row">
+        <div class="summary-title">기기 등록 현황</div>
+        <span class="count">등록 {{ warranty_summary.registered }}건</span>
+        <span class="count missing">미등록 {{ warranty_summary.missing }}건</span>
+        <span class="count">전체 {{ warranty_summary.total }}건</span>
+      </div>
+      <form class="tools" action="/{{ product }}/exchange/warranty" method="get">
+        <input name="warranty_q"
+               value="{{ warranty_q }}"
+               placeholder="S/N 또는 병원명 검색">
+        <select name="warranty_status">
+          <option value="all" {{ 'selected' if warranty_status == 'all' else '' }}>전체 기기</option>
+          <option value="missing"
+                  {{ 'selected' if warranty_status == 'missing' else '' }}>구매일 미등록</option>
+          <option value="registered"
+                  {{ 'selected' if warranty_status == 'registered' else '' }}>구매일 등록</option>
+        </select>
+        <button type="submit">조회</button>
+      </form>
+      <div class="table-wrap">
+        <table class="device-table">
+          <thead>
+            <tr>
+              <th>S/N</th>
+              <th>최근 병원명</th>
+              <th>최근 접수일</th>
+              <th>최초 구매일</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for device in warranty_summary.devices %}
+              <tr>
+                <td>{{ device.serial }}</td>
+                <td class="hospital" title="{{ device.hospital_name }}">{{ device.hospital_name }}</td>
+                <td>{{ device.received_date or '-' }}</td>
+                <td>
+                  <form class="inline-form" action="/device-search/warranty" method="post">
+                    <input type="hidden" name="root_serial" value="{{ device.serial }}">
+                    <input type="hidden" name="return_product" value="{{ product }}">
+                    <input type="hidden" name="return_view" value="warranty">
+                    <input type="hidden" name="return_warranty_q" value="{{ warranty_q }}">
+                    <input type="hidden"
+                           name="return_warranty_status"
+                           value="{{ warranty_status }}">
+                    <input type="hidden"
+                           name="return_warranty_page"
+                           value="{{ warranty_summary.page }}">
+                    <input type="date"
+                           name="purchase_date"
+                           value="{{ device.purchase_date or '' }}"
+                           required>
+                    <button type="submit">{{ '수정' if device.purchase_date else '등록' }}</button>
+                    {% if not device.purchase_date %}
+                      <span class="missing-label">미등록</span>
+                    {% endif %}
+                  </form>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="4">조건에 맞는 기기가 없습니다.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if warranty_summary.page_count > 1 %}
+        <div class="pagination">
+          {% if warranty_summary.has_prev %}
+            <a href="?warranty_q={{ warranty_q | urlencode }}&warranty_status={{ warranty_status }}&warranty_page={{ warranty_summary.prev_page }}">이전</a>
+          {% endif %}
+          <span>{{ warranty_summary.page }} / {{ warranty_summary.page_count }} 페이지 · 검색 결과 {{ warranty_summary.filtered }}건</span>
+          {% if warranty_summary.has_next %}
+            <a href="?warranty_q={{ warranty_q | urlencode }}&warranty_status={{ warranty_status }}&warranty_page={{ warranty_summary.next_page }}">다음</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

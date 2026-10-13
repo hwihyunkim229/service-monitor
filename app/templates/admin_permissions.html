@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block page_name %}계정별 권한{% endblock %}
+{% block content %}
+  <style>
+      .permission-editor {
+          max-width: 1100px;
+          margin: 0 auto;
+      }
+
+      .permission-editor .panel {
+          background: #fff;
+          border: 1px solid var(--line);
+          border-radius: 16px;
+          padding: 24px;
+          box-shadow: var(--shadow);
+      }
+
+      .permission-editor h1 {
+          margin: 4px 0 10px;
+          font-size: 25px;
+      }
+
+      .permission-editor p {
+          color: #475467;
+          font-size: 14px;
+          line-height: 1.6;
+      }
+
+      .permission-editor .role-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          margin: 22px 0;
+          font-weight: 700;
+      }
+
+      .permission-editor .role-row select {
+          width: 210px;
+      }
+
+      .permission-editor table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+      }
+
+      .permission-editor th,
+      .permission-editor td {
+          border-bottom: 1px solid #e4eaf0;
+          padding: 14px 12px;
+          text-align: center;
+          font-size: 14px;
+      }
+
+      .permission-editor th:first-child,
+      .permission-editor td:first-child {
+          text-align: left;
+          font-weight: 700;
+      }
+
+      .permission-editor thead {
+          background: #f4f8fb;
+      }
+
+      .permission-editor input[type=checkbox] {
+          width: 18px;
+          height: 18px;
+          accent-color: #176b87;
+          cursor: pointer;
+      }
+
+      .permission-editor .actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+          margin-top: 22px;
+      }
+
+      .permission-editor .notice {
+          padding: 10px 14px;
+          border-radius: 9px;
+          background: #e9f7f1;
+          color: #126247;
+      }
+  </style>
+  <div class="permission-editor">
+    <div class="page-head">
+      <div class="page-title">
+        <span>ACCESS CONTROL</span>
+        <h1>{{ account.username }} 권한 설정</h1>
+        <p>역할과 별도로 이 계정에 허용할 페이지 및 작업을 지정합니다.</p>
+      </div>
+    </div>
+    <div class="panel">
+      {% if request.query_params.get('saved') %}
+        <p class="notice">권한이 저장되었습니다. 다음 요청부터 적용됩니다.</p>
+      {% endif %}
+      {% if request.query_params.get('created') %}
+        <p class="notice">계정이 생성되었습니다. 아래에서 세부 권한을 확인하고 저장하세요.</p>
+      {% endif %}
+      {% if request.query_params.get('error') %}
+        <p class="auth-alert">역할을 확인하세요. 본인의 관리자 권한은 해제할 수 없습니다.</p>
+      {% endif %}
+      <form method="post" action="/admin/users/{{ account.id }}/permissions">
+        <label class="role-row">
+          권한 역할
+          <select name="role" id="account-role" aria-label="권한 역할">
+            {% for key,label in roles.items() %}
+              <option value="{{ key }}" {% if account.role == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <p>시스템 관리자는 모든 권한을 가집니다. 사용자는 아래 체크한 작업을 수행하며, 뷰어는 조회와 Excel 다운로드만 선택할 수 있습니다. ‘Excel 업로드’는 파일 데이터 반영, ‘Slack 가져오기’는 붙여넣은 상담 등록, ‘첨부 업로드’는 연구소 파일 등록을 뜻합니다.</p>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>페이지</th>
+                {% for label in actions.values() %}
+                  <th>{{ label }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for section,label in sections.items() %}
+                <tr>
+                  <td>{{ label }}</td>
+                  {% for action in actions %}
+                    <td>
+                      <input type="checkbox"
+                             name="{{ section }}.{{ action }}"
+                             data-action="{{ action }}"
+                             aria-label="{{ label }} {{ actions[action] }}"
+                             {% if permissions.get(section) and permissions[section]|attr('can_' ~ action) %}checked{% endif %}>
+                    </td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <a class="secondary" href="/admin">계정 목록</a>
+          <button type="submit">권한 저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+      (() => {
+          const role = document.getElementById('account-role');
+          const update = () => document.querySelectorAll('.permission-editor [data-action]').forEach(box => {
+              box.disabled = role.value === 'viewer' && !['view', 'download'].includes(box.dataset.action);
+              if (box.disabled) box.checked = false;
+          });
+          role.addEventListener('change', update);
+          update();
+      })();
+  </script>
+{% endblock %}

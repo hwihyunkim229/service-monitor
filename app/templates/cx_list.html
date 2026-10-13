@@ -1,0 +1,715 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>CX 분석 목록</h2>
+  <style>
+      .cs-table th,
+      .cs-table td {
+          text-align: center;
+          vertical-align: middle;
+          white-space: nowrap;
+      }
+
+      .cs-table select,
+      .cs-table textarea {
+          height: 28px;
+          padding: 3px 6px;
+          font-size: 13px;
+      }
+
+      .cs-table textarea {
+          resize: none;
+          padding: 4px;
+      }
+
+      .cs-table th {
+          background: #f3f4f6;
+          font-weight: 600;
+      }
+
+      .cs-table th .filter {
+          margin-top: 4px;
+      }
+
+      .cs-table thead th {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          background: #f3f4f6;
+      }
+
+      .table-scroll {
+          overflow-x: auto;
+          max-height: 75vh;
+      }
+
+      .result-cell {
+          white-space: normal;
+          vertical-align: top;
+          padding: 0 !important;
+      }
+
+      .result_summary {
+          min-height: 24px;
+          padding: 4px 6px;
+          outline: none;
+          border: none;
+          background: transparent;
+          white-space: pre-line;
+          word-break: break-word;
+          line-height: 1.3;
+          padding-top: 2px;
+          margin: 0;
+      }
+
+      .result_summary:focus {
+          background: #f9fafb;
+      }
+
+      .table td,
+      .table th {
+          padding: 8px 10px;
+          height: 34px;
+          vertical-align: middle;
+      }
+
+      .top-bar {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 10px;
+      }
+
+      .left-group {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+      }
+
+      .csv-upload-form {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: nowrap;
+      }
+
+      .file-input {
+          font-size: 12px;
+          padding: 2px;
+          height: 32px;
+      }
+
+      .btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          height: 32px;
+          padding: 0 12px;
+          font-size: 13px;
+          border-radius: 6px;
+          cursor: pointer;
+          border: 1px solid #d1d5db;
+          background: #f9fafb;
+          color: #111827;
+          white-space: nowrap;
+      }
+
+      .btn:hover {
+          background: #f3f4f6;
+      }
+
+      .excel-btn {
+          width: 24px;
+          cursor: pointer;
+      }
+
+      .filter-bar {
+          display: grid;
+          gap: 10px;
+          grid-template-columns:
+              100px 140px 150px 220px 150px 150px 120px 150px 150px 120px 1fr 80px;
+      }
+
+      .search-btn {
+          width: 80px;
+      }
+
+      .filter-input,
+      .filter-select {
+          height: 36px;
+          padding: 6px 10px;
+          font-size: 13px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          background: #fff;
+          box-sizing: border-box;
+      }
+
+      .filter-select {
+          appearance: none;
+      }
+
+      .search-btn {
+          height: 36px;
+          background: #2563eb;
+          color: #fff;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+      }
+
+      .search-btn:hover {
+          background: #1d4ed8;
+      }
+
+      .filter-toggle-bar {
+          margin-bottom: 10px;
+      }
+
+      .filter-toggle-btn {
+          background: #f3f4f6;
+          border: 1px solid #d1d5db;
+          padding: 6px 12px;
+          border-radius: 6px;
+          cursor: pointer;
+          height: 28px;
+          color: #111827;
+          font-size: 13px;
+      }
+
+      .filter-toggle-btn:hover {
+          background: #e5e7eb;
+      }
+
+      .filter-panel {
+          display: none;
+          margin-bottom: 12px;
+          padding: 12px;
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+      }
+
+      .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+          margin-top: 16px;
+      }
+
+      .page-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 32px;
+          height: 32px;
+          padding: 0 10px;
+          border: 1px solid #d1d5db;
+          border-radius: 6px;
+          background: #fff;
+          color: #111827;
+          text-decoration: none;
+          font-size: 14px;
+          transition: 0.2s;
+      }
+
+      .page-btn:hover {
+          background: #f3f4f6;
+      }
+
+      .page-info {
+          font-size: 14px;
+          font-weight: 600;
+          color: #374151;
+          min-width: 70px;
+          text-align: center;
+      }
+  </style>
+  <div class="top-bar">
+    <div class="left-group">
+      <button type="button" class="btn" onclick="toggleCsvUpload()" id="csvBtn">Excel 업로드</button>
+      <div id="csvUploadArea" style="display:none;">
+        <form action="/{{ product }}/cx/upload_csv"
+              method="post"
+              enctype="multipart/form-data"
+              class="csv-upload-form">
+          <input type="file"
+                 name="file"
+                 accept=".xlsx,.xls,.csv"
+                 class="file-input"
+                 required
+                 aria-label="Excel 파일 선택">
+          <button type="submit" class="btn">가져오기</button>
+          {% set ns = namespace(has_filters=false) %}
+          {% for key, value in request.query_params.items() %}
+            {% if key != "page" and value %}
+              {% set ns.has_filters = true %}
+            {% endif %}
+          {% endfor %}
+          {% if ns.has_filters %}
+            <button type="button" onclick="location.href='?page=1'" class="btn">초기화</button>
+          {% endif %}
+        </form>
+      </div>
+      <button onclick="toggleFilter()" class="btn filter-toggle-btn">🔍 필터</button>
+    </div>
+    <a href="/{{ product }}/cx/export">
+      <img src="https://cdn-icons-png.flaticon.com/512/732/732220.png"
+           class="excel-btn"
+           title="엑셀 다운로드">
+    </a>
+  </div>
+  <div id="filterPanel" class="filter-panel">
+    <div class="filter-bar">
+      <input class="filter filter-input"
+             placeholder="식별코드"
+             data-field="transfer_no">
+      <input class="filter filter-input"
+             placeholder="Serial No"
+             data-field="serial_no">
+      <select class="filter filter-select" data-field="category_main">
+        <option value="">유형(대)</option>
+        {% for value in category_main_options %}
+          <option value="{{ value }}">{{ value }}</option>
+        {% endfor %}
+      </select>
+      <select class="filter filter-select" data-field="category_sub">
+        <option value="">유형(소)</option>
+        {% for value in category_sub_options %}
+          <option value="{{ value }}">{{ value }}</option>
+        {% endfor %}
+      </select>
+      <select class="filter filter-select" data-field="issue1">
+        <option value="">불량 원인1</option>
+      </select>
+      <select class="filter filter-select" data-field="depth1_1">
+        <option value="">Depth1-1</option>
+      </select>
+      <select class="filter filter-select" data-field="depth1_2">
+        <option value="">Depth1-2</option>
+      </select>
+      <select class="filter filter-select" data-field="issue2">
+        <option value="">불량 원인2</option>
+      </select>
+      <select class="filter filter-select" data-field="depth2_1">
+        <option value="">Depth2-1</option>
+      </select>
+      <select class="filter filter-select" data-field="depth2_2">
+        <option value="">Depth2-2</option>
+      </select>
+      <input class="filter filter-input"
+             placeholder="처리 결과"
+             data-field="result_summary">
+      <button type="button" id="cxFilterSearch" class="search-btn">검색</button>
+    </div>
+  </div>
+  <div class="card list-card">
+    <div class="table-scroll">
+      <table class="table cs-table spreadsheet-enhanced">
+        <colgroup>
+          <col style="width:58px">
+          <col style="width:60px">
+          <col style="width:100px">
+          <col style="width:100px">
+          <col style="width:180px">
+          <col style="width:110px">
+          <col style="width:100px">
+          <col style="width:50px">
+          <col style="width:130px">
+          <col style="width:130px">
+          <col style="width:100px">
+          <col style="width:130px">
+          <col style="width:130px">
+          <col style="width:100px">
+          <col style="width:220px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>흐름</th>
+            <th>식별코드</th>
+            <th>일자</th>
+            <th>유형(대분류)</th>
+            <th>유형(소분류)</th>
+            <th>Serial No</th>
+            <th>LOT</th>
+            <th>Size</th>
+            <th>불량 원인1</th>
+            <th>Depth1-1</th>
+            <th>Depth1-2</th>
+            <th>불량 원인2</th>
+            <th>Depth2-1</th>
+            <th>Depth2-2</th>
+            <th>처리 결과</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cs in cs_list %}
+            <tr data-transfer_no="{{ cs.transfer_no or '' }}"
+                data-category_main="{{ cs.category_main or '' }}"
+                data-category_sub="{{ cs.category_sub or '' }}"
+                data-serial_no="{{ cs.serial_no or '' }}"
+                data-issue1="{{ cs.cx.issue1 if cs.cx and cs.cx.issue1 not in [none, 'None'] else '' }}"
+                data-depth1_1="{{ cs.cx.depth1_1 if cs.cx and cs.cx.depth1_1 not in [none, 'None'] else '' }}"
+                data-depth1_2="{{ cs.cx.depth1_2 if cs.cx and cs.cx.depth1_2 not in [none, 'None'] else '' }}"
+                data-issue2="{{ cs.cx.issue2 if cs.cx and cs.cx.issue2 not in [none, 'None'] else '' }}"
+                data-depth2_1="{{ cs.cx.depth2_1 if cs.cx and cs.cx.depth2_1 not in [none, 'None'] else '' }}"
+                data-depth2_2="{{ cs.cx.depth2_2 if cs.cx and cs.cx.depth2_2 not in [none, 'None'] else '' }}"
+                data-result_summary="{{ cs.cx.result_summary if cs.cx and cs.cx.result_summary not in [none, 'None'] else '' }}">
+              <td class="workflow-cell">
+                <button type="button"
+                        class="workflow-trigger"
+                        data-workflow-transfer="{{ cs.transfer_no or '' }}"
+                        data-product="{{ product }}"
+                        title="이 건의 전체 업무 단계 보기">흐름</button>
+              </td>
+              <td>{{ cs.transfer_no }}</td>
+              <td>{{ cs.received_at.strftime("%Y-%m-%d") if cs.received_at else '-' }}</td>
+              <td>{{ cs.category_main }}</td>
+              <td>{{ cs.category_sub }}</td>
+              <td>{{ cs.serial_no }}</td>
+              <td>{{ cs.lot if cs.lot not in [none, 'None'] else '' }}</td>
+              <td>{{ cs.size if cs.size and cs.size != 'None' else '' }}</td>
+              <td class="editable-select" data-id="{{ cs.id }}" data-field="issue1">
+                <span class="cell-text">{{ cs.cx.issue1 if cs.cx and cs.cx.issue1 not in [none, 'None'] else '' }}</span>
+                <select class="cell-select" style="display:none;"></select>
+              </td>
+              <td class="editable-select" data-id="{{ cs.id }}" data-field="depth1_1">
+                <span class="cell-text">{{ cs.cx.depth1_1 if cs.cx and cs.cx.depth1_1 not in [none, 'None'] else '' }}</span>
+                <select class="cell-select" style="display:none;"></select>
+              </td>
+              <td class="editable-select" data-id="{{ cs.id }}" data-field="depth1_2">
+                <span class="cell-text">{{ cs.cx.depth1_2 if cs.cx and cs.cx.depth1_2 not in [none, 'None'] else '' }}</span>
+                <select class="cell-select" style="display:none;"></select>
+              </td>
+              <td class="editable-select" data-id="{{ cs.id }}" data-field="issue2">
+                <span class="cell-text">{{ cs.cx.issue2 if cs.cx and cs.cx.issue2 not in [none, 'None'] else '' }}</span>
+                <select class="cell-select" style="display:none;"></select>
+              </td>
+              <td class="editable-select" data-id="{{ cs.id }}" data-field="depth2_1">
+                <span class="cell-text">{{ cs.cx.depth2_1 if cs.cx and cs.cx.depth2_1 not in [none, 'None'] else '' }}</span>
+                <select class="cell-select" style="display:none;"></select>
+              </td>
+              <td class="editable-select" data-id="{{ cs.id }}" data-field="depth2_2">
+                <span class="cell-text">{{ cs.cx.depth2_2 if cs.cx and cs.cx.depth2_2 not in [none, 'None'] else '' }}</span>
+                <select class="cell-select" style="display:none;"></select>
+              </td>
+              <td class="result-cell">
+                <div class="result_summary" contenteditable="true" data-id="{{ cs.id }}">
+                  {{ '' if not cs.cx or cs.cx.result_summary in [none, 'None'] else cs.cx.result_summary.strip() }}
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      {% if page > 1 %}
+        <a href="javascript:void(0)"
+           class="page-btn"
+           onclick="movePage(firstPage)">&laquo;</a>
+        <a href="javascript:void(0)"
+           class="page-btn"
+           onclick="movePage(prevPage)">&lsaquo;</a>
+      {% endif %}
+      <span class="page-info">{{ page }} / {{ total_pages }}</span>
+      {% if page < total_pages %}
+        <a href="javascript:void(0)"
+           class="page-btn"
+           onclick="movePage(nextPage)">&rsaquo;</a>
+        <a href="javascript:void(0)"
+           class="page-btn"
+           onclick="movePage(lastPage)">&raquo;</a>
+      {% endif %}
+    </div>
+  </div>
+  <script>
+      const product = "{{ product }}";
+
+      function toggleFilter() {
+          const panel = document.getElementById("filterPanel");
+          if (!panel) return;
+          const isHidden = getComputedStyle(panel).display === "none";
+          panel.style.display = isHidden ? "block" : "none";
+      }
+
+      document.addEventListener("DOMContentLoaded", function() {
+
+          function updateField(id, field, value) {
+              fetch(`/${product}/cx/update/${id}`, {
+                  method: "POST",
+                  headers: {
+                      "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({
+                      field,
+                      value
+                  })
+              });
+          }
+
+          document.querySelectorAll("select.filter").forEach(select => {
+              const field = select.dataset.field;
+              if ([
+                      "category_main", "category_sub",
+                      "issue1", "issue2",
+                      "depth1_1", "depth1_2",
+                      "depth2_1", "depth2_2"
+                  ].includes(field)) return;
+              const values = new Set();
+              document.querySelectorAll("tbody tr").forEach(row => {
+                  const val = row.dataset[field];
+                  if (val && val !== "None") values.add(val);
+              });
+              values.forEach(v => select.add(new Option(v, v)));
+          });
+
+          const subIssueMap = {
+              'H/W 이슈': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'MCU', 'PMIC', 'AFE(센서 불량)', 'Memory(통신 불량)', 'IMU', '무선 충전 IC', 'BLE 안테나 IC', '배터리 불량', '정합', '크래들 불량', '분석 불가', 'PD 불량', '기타', '양품'],
+              '기구 이슈': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'Inner 타공부위 침수', '기타'],
+              '공정 이슈': ['PI Tape 누락', '에폭시 부족', '기타'],
+              'F/W 이슈': ['분석 필요', '04 Error', '버그 (04 error 제외)', '재현 안됨', '기타'],
+              'App 이슈': ['분석 필요', '기기 다중 연결', '버그', '재현 안됨', '기타'],
+              'Server 이슈': ['분석 필요', '기기 다중 연결', '서버 장애', '분기화 오류', '버그', '재현 안됨', '기타'],
+              '기획 이슈': ['사용성 이슈', '추가 가이드 고려', '기타'],
+              '측정 이슈': ['분석 필요', '움직임 또는 불규칙 신호', '불규칙 맥파', '사용자 보정 실수', '사이즈', '미착용', 'ISS 코너케이스', '음수/0/DC 변동', '기타'],
+              '기기 등록 이슈': ['타병원에 기기 등록', 'S/N 오류', '기타'],
+              '기타': []
+          };
+
+          const detailMap = {
+              'MCU': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+              'PMIC': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+              'AFE(센서 불량)': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+              'IMU': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+              '배터리 불량': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'Cell 누액', 'PCM 불량', '냉땜', 'FPCB 단선', '과방전', '기타'],
+              '크래들 불량': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'LED 불량', 'Tx coil 불량', '충전 IC 불량', 'Load switch 불량', '침수', '기타'],
+              '서버 장애': ['서버 다운', '서버 불안정'],
+              '추가 가이드 고려': ['보정', '최적화', '기기 등록', '기기 연결', '기기 연결 해제', '환자 목록', '측정 방법', '측정 데이터', '리포트', 'IFU', '기타']
+          };
+
+          document.querySelectorAll(".editable-select").forEach(cell => {
+              const span = cell.querySelector(".cell-text");
+              const select = cell.querySelector(".cell-select");
+              const id = cell.dataset.id;
+              const field = cell.dataset.field;
+
+              function fillOptions() {
+                  select.innerHTML = '<option value=""></option>';
+                  if (field === "issue1" || field === "issue2") {
+                      Object.keys(subIssueMap).forEach(v => {
+                          select.add(new Option(v, v));
+                      });
+                  }
+
+                  if (field.includes("depth1_1") || field.includes("depth2_1")) {
+                      const parent = cell.closest("tr")
+                          .querySelector(`[data-field="${field.includes("1") ? "issue1" : "issue2"}"] .cell-text`)
+                          .innerText.trim();
+                      (subIssueMap[parent] || []).forEach(v => {
+                          select.add(new Option(v, v));
+                      });
+                  }
+
+                  if (field.includes("depth1_2") || field.includes("depth2_2")) {
+                      const parent = cell.closest("tr")
+                          .querySelector(`[data-field="${field.includes("1") ? "depth1_1" : "depth2_1"}"] .cell-text`)
+                          .innerText.trim();
+                      (detailMap[parent] || []).forEach(v => {
+                          select.add(new Option(v, v));
+                      });
+                  }
+              }
+
+              cell.addEventListener("click", () => {
+                  span.style.display = "none";
+                  select.style.display = "block";
+                  fillOptions();
+                  const current = span.innerText.trim();
+                  if (current) select.value = current;
+                  select.focus();
+              });
+
+              select.addEventListener("change", () => {
+                  const value = select.value;
+                  span.innerText = value;
+                  fetch(`/${product}/cx/update/${id}`, {
+                      method: "POST",
+                      headers: {
+                          "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify({
+                          field: field,
+                          value: value
+                      })
+                  });
+                  select.style.display = "none";
+                  span.style.display = "inline";
+              });
+
+              select.addEventListener("blur", () => {
+                  select.style.display = "none";
+                  span.style.display = "inline";
+              });
+          });
+
+          function initIssueOptions() {
+              const issue1 = document.querySelector('[data-field="issue1"]');
+              const issue2 = document.querySelector('[data-field="issue2"]');
+              Object.keys(subIssueMap).forEach(v => {
+                  issue1.add(new Option(v, v));
+                  issue2.add(new Option(v, v));
+              });
+          }
+          initIssueOptions();
+
+          function bindDepth(parentField, childField, map) {
+              const parent = document.querySelector(`[data-field="${parentField}"]`);
+              const child = document.querySelector(`[data-field="${childField}"]`);
+              if (!parent || !child) {
+                  console.log("bindDepth skip:", parentField, childField);
+                  return;
+              }
+              parent.addEventListener("change", function() {
+                  child.innerHTML = `<option value="">전체</option>`;
+                  (map[this.value] || []).forEach(v => {
+                      child.add(new Option(v, v));
+                  });
+              });
+          }
+          bindDepth("issue1", "depth1_1", subIssueMap);
+          bindDepth("depth1_1", "depth1_2", detailMap);
+          bindDepth("issue2", "depth2_1", subIssueMap);
+          bindDepth("depth2_1", "depth2_2", detailMap);
+
+          const urlParams = new URLSearchParams(window.location.search);
+          const hasFilter = [...urlParams.entries()]
+              .some(([k, v]) => k !== "page" && v);
+          if (hasFilter) {
+              const panel = document.getElementById("filterPanel");
+              if (panel) panel.style.display = "block";
+          }
+
+          document.querySelectorAll(".filter").forEach(el => {
+              const field = el.dataset.field;
+              const value = urlParams.get(field);
+              if (value) {
+                  el.value = value;
+
+                  if (el.tagName === "SELECT") {
+                      el.dispatchEvent(new Event("change"));
+                  }
+              }
+          });
+
+          document.querySelectorAll(".filter").forEach(el => {
+              if (el.tagName === "SELECT") {
+                  el.addEventListener("change", function() {
+                      const field = this.dataset.field;
+                      applyFilter();
+                  });
+              }
+
+              if (el.tagName === "INPUT") {
+                  el.addEventListener("keydown", (e) => {
+                      if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyFilter();
+                      }
+                  });
+              }
+          });
+
+          const filterSearchButton = document.getElementById("cxFilterSearch");
+          if (filterSearchButton) {
+              filterSearchButton.addEventListener("click", applyFilter);
+          }
+
+          function applyFilter() {
+              const params = new URLSearchParams();
+              document.querySelectorAll(".filter").forEach(f => {
+                  const field = f.dataset.field;
+                  let value = f.value;
+                  if (value) value = value.trim();
+                  if (value) {
+                      params.set(field, value);
+                  }
+              });
+
+              params.set("page", 1);
+              console.log("FILTER PARAMS:", params.toString());
+              window.location.href = "?" + params.toString();
+          }
+      });
+
+      document.querySelectorAll(".result_summary").forEach(el => {
+
+          let original = el.innerText.trim();
+
+          el.addEventListener("focus", () => {
+              original = el.innerText.trim();
+          });
+
+          el.addEventListener("blur", async () => {
+
+              const value = el.innerText.trim();
+
+              // 변경 없으면 저장 안함
+              if (value === original) return;
+
+              const id = el.dataset.id;
+
+              try {
+                  await fetch(`/${product}/cx/update/${id}`, {
+                      method: "POST",
+                      headers: {
+                          "Content-Type": "application/json"
+                      },
+                      body: JSON.stringify({
+                          field: "result_summary",
+                          value: value
+                      })
+                  });
+
+                  original = value;
+
+              } catch (err) {
+                  console.error("저장 실패:", err);
+              }
+          });
+      });
+
+      function toggleCsvUpload() {
+          const area = document.getElementById("csvUploadArea");
+          const btn = document.getElementById("csvBtn");
+
+          if (area.style.display === "none") {
+              area.style.display = "block";
+              btn.innerText = "닫기";
+          } else {
+              area.style.display = "none";
+              btn.innerText = "Excel 업로드";
+          }
+      }
+
+      const currentPage = JSON.parse('{{ page | tojson | safe }}');
+      const totalPages = JSON.parse('{{ total_pages | tojson | safe }}');
+
+      const firstPage = 1;
+      const prevPage = currentPage - 1;
+
+      const nextPage = currentPage + 1;
+      const lastPage = totalPages;
+
+      function movePage(page) {
+
+          const url = new URL(window.location.href);
+
+          url.searchParams.set("page", page);
+
+          window.location.href = url.toString();
+      }
+  </script>
+{% endblock %}

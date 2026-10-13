@@ -1,0 +1,1165 @@
+{% extends "base.html" %}
+{% block page_name %}운영 대시보드 · 교품/회수{% endblock %}
+{% block content %}
+  {% set hero_eyebrow = "EXCHANGE OPERATIONS" %}
+  {% set hero_title = "교품·회수 운영 현황" %}
+  {% set hero_description = "교품 접수부터 회수, 품질 등록, 분석 완료까지 병목과 리드타임을 추적합니다." %}
+  {% set hero_badge = product %}
+  {% include "dashboard/_dashboard_hero.html" %}
+  <style>
+      .exchange-dashboard {
+          --ex-navy: #17324d;
+          --ex-teal: #117589;
+          --ex-mint: #2fa584;
+          --ex-blue: #3975d5;
+          --ex-amber: #d48726;
+          --ex-coral: #d85f58;
+          display: flex;
+          flex-direction: column;
+          gap: 15px;
+      }
+
+      .exchange-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 11px 13px;
+          border: 1px solid #dfe7ed;
+          border-radius: 12px;
+          background: #fff;
+      }
+
+      .exchange-toolbar__scope {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          color: #526277;
+          font-size: 12px;
+          font-weight: 500;
+      }
+
+      .exchange-toolbar__scope i {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--ex-teal);
+          box-shadow: 0 0 0 4px rgba(17, 117, 137, .1);
+      }
+
+      .exchange-toolbar__scope strong {
+          color: var(--ex-navy);
+          font-size: 12px;
+      }
+
+      .exchange-filter-toggle {
+          min-height: 32px;
+          padding: 0 11px;
+          border: 1px solid #cfe0e4;
+          border-radius: 8px;
+          background: #f7fbfc;
+          color: var(--ex-teal);
+          font-size: 11px;
+          font-weight: 750;
+      }
+
+      .exchange-filter {
+          display: none;
+          padding: 14px;
+          border: 1px solid #dfe7ed;
+          border-radius: 12px;
+          background: #fff;
+      }
+
+      .exchange-filter.show {
+          display: block;
+      }
+
+      .exchange-filter form,
+      .exchange-filter__row,
+      .exchange-filter__group,
+      .exchange-filter__actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+      }
+
+      .exchange-filter form {
+          flex-wrap: wrap;
+          justify-content: space-between;
+      }
+
+      .exchange-filter__row {
+          flex-wrap: wrap;
+      }
+
+      .exchange-filter__row>strong {
+          margin-right: 3px;
+          color: #526277;
+          font-size: 11px;
+      }
+
+      .exchange-filter input {
+          width: 132px;
+          min-height: 32px;
+          font-size: 11px;
+      }
+
+      .exchange-filter button,
+      .exchange-filter a {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 32px;
+          padding: 0 11px;
+          border: 1px solid #d5dfe7;
+          border-radius: 8px;
+          background: #fff;
+          color: #43546a;
+          font-size: 11px;
+          font-weight: 700;
+          text-decoration: none;
+      }
+
+      .exchange-filter button {
+          border-color: var(--ex-teal);
+          background: var(--ex-teal);
+          color: #fff;
+      }
+
+      .exchange-kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 11px;
+      }
+
+      .exchange-kpi {
+          position: relative;
+          overflow: hidden;
+          min-height: 143px;
+          padding: 18px;
+          border: 1px solid #dfe7ed;
+          border-radius: 13px;
+          background: #fff;
+          box-shadow: 0 5px 16px rgba(23, 36, 54, .045);
+      }
+
+      .exchange-kpi::before {
+          position: absolute;
+          inset: 0 auto 0 0;
+          width: 3px;
+          background: var(--tone, var(--ex-teal));
+          content: "";
+      }
+
+      .exchange-kpi__top {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+      }
+
+      .exchange-kpi__label {
+          color: #526277;
+          font-size: 12px;
+          font-weight: 750;
+      }
+
+      .exchange-kpi__badge {
+          padding: 4px 7px;
+          border-radius: 999px;
+          background: color-mix(in srgb, var(--tone, var(--ex-teal)) 10%, white);
+          color: var(--tone, var(--ex-teal));
+          font-size: 11px;
+          font-weight: 800;
+      }
+
+      .exchange-kpi__value {
+          margin-top: 12px;
+          color: var(--ex-navy);
+          font-size: 28px;
+          font-weight: 800;
+          letter-spacing: -.045em;
+      }
+
+      .exchange-kpi__value small {
+          margin-left: 2px;
+          color: #607086;
+          font-size: 12px;
+          font-weight: 650;
+      }
+
+      .exchange-kpi__meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-top: 10px;
+          color: #526277;
+          font-size: 11px;
+          font-weight: 500;
+      }
+
+      .exchange-progress {
+          height: 5px;
+          overflow: hidden;
+          margin-top: 9px;
+          border-radius: 999px;
+          background: #edf2f5;
+      }
+
+      .exchange-progress span {
+          display: block;
+          width: var(--progress);
+          height: 100%;
+          border-radius: inherit;
+          background: var(--tone, var(--ex-teal));
+      }
+
+      .exchange-queue {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
+      }
+
+      .queue-card {
+          display: grid;
+          grid-template-columns: 35px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 11px;
+          min-height: 72px;
+          padding: 12px 14px;
+          border: 1px solid #dfe7ed;
+          border-radius: 12px;
+          background: #fff;
+      }
+
+      .queue-card__icon {
+          display: grid;
+          place-items: center;
+          width: 35px;
+          height: 35px;
+          border-radius: 10px;
+          background: var(--queue-soft);
+          color: var(--queue-color);
+          font-size: 11px;
+          font-weight: 850;
+      }
+
+      .queue-card strong {
+          display: block;
+          color: var(--ex-navy);
+          font-size: 12px;
+      }
+
+      .queue-card small {
+          display: block;
+          margin-top: 4px;
+          color: #58697f;
+          font-size: 11px;
+          font-weight: 500;
+      }
+
+      .queue-card b {
+          color: var(--queue-color);
+          font-size: 21px;
+          letter-spacing: -.04em;
+      }
+
+      .pipeline-card,
+      .exchange-chart-card {
+          border: 1px solid #dfe7ed !important;
+          border-radius: 13px !important;
+          background: #fff !important;
+          box-shadow: 0 5px 18px rgba(23, 36, 54, .045) !important;
+      }
+
+      .pipeline-card {
+          padding: 18px;
+      }
+
+      .section-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 15px;
+      }
+
+      .section-head h3 {
+          margin: 0;
+          color: var(--ex-navy);
+          font-size: 15px;
+          letter-spacing: -.025em;
+      }
+
+      .section-head p {
+          margin: 4px 0 0;
+          color: #526277;
+          font-size: 12px;
+          font-weight: 500;
+          line-height: 1.55;
+      }
+
+      .chart-series-summary {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          flex-wrap: wrap;
+      }
+
+      .chart-series-summary span,
+      .chart-insight {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 28px;
+          padding: 0 9px;
+          border: 1px solid #dfe7ed;
+          border-radius: 8px;
+          background: #f8fafb;
+          color: #526277;
+          font-size: 11px;
+          font-weight: 500;
+          white-space: nowrap;
+      }
+
+      .chart-series-summary i {
+          width: 8px;
+          height: 8px;
+          border-radius: 3px;
+          background: var(--series-color);
+      }
+
+      .chart-series-summary span:last-child i {
+          width: 15px;
+          height: 3px;
+          border-radius: 999px;
+      }
+
+      .chart-series-summary b,
+      .chart-insight b {
+          color: var(--ex-navy);
+          font-size: 11px;
+      }
+
+      .chart-reading-guide {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          margin: 3px 0 10px;
+          padding: 8px 10px;
+          border-left: 3px solid #e05252;
+          border-radius: 0 8px 8px 0;
+          background: #fff7f6;
+          color: #713f3b;
+          font-size: 11px;
+          font-weight: 500;
+          line-height: 1.5;
+      }
+
+      .pipeline {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 9px;
+      }
+
+      .pipeline-stage {
+          position: relative;
+          min-height: 99px;
+          padding: 13px 14px;
+          border: 1px solid #e2e9ee;
+          border-radius: 11px;
+          background: #f9fbfc;
+      }
+
+      .pipeline-stage:not(:last-child)::after {
+          position: absolute;
+          top: 50%;
+          right: -10px;
+          z-index: 2;
+          width: 10px;
+          height: 1px;
+          background: #cdd9e1;
+          content: "";
+      }
+
+      .pipeline-stage__step {
+          color: var(--stage-color);
+          font-size: 11px;
+          font-weight: 850;
+          letter-spacing: .08em;
+      }
+
+      .pipeline-stage__body {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 8px;
+          margin-top: 11px;
+      }
+
+      .pipeline-stage__body strong {
+          color: var(--ex-navy);
+          font-size: 20px;
+      }
+
+      .pipeline-stage__body span {
+          color: #526277;
+          font-size: 11px;
+          font-weight: 750;
+      }
+
+      .pipeline-stage__bar {
+          height: 4px;
+          overflow: hidden;
+          margin-top: 10px;
+          border-radius: 999px;
+          background: #e8eef2;
+      }
+
+      .pipeline-stage__bar i {
+          display: block;
+          width: var(--stage-progress);
+          height: 100%;
+          border-radius: inherit;
+          background: var(--stage-color);
+      }
+
+      .exchange-charts {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+      }
+
+      .exchange-chart-pair {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+      }
+
+      .exchange-chart-card {
+          overflow: hidden;
+          padding: 18px !important;
+      }
+
+      .exchange-chart-card .section-head {
+          margin-bottom: 8px;
+      }
+
+      .chart-canvas {
+          position: relative;
+          width: 100%;
+          height: 330px;
+      }
+
+      .chart-canvas.compact {
+          height: 285px;
+      }
+
+      .chart-canvas canvas {
+          width: 100% !important;
+          height: 100% !important;
+      }
+
+      @media (max-width: 1100px) {
+
+          .exchange-kpi-grid,
+          .exchange-queue {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+      }
+
+      @media (max-width: 720px) {
+
+          .exchange-kpi-grid,
+          .exchange-queue,
+          .pipeline {
+              grid-template-columns: 1fr;
+          }
+
+          .pipeline-stage:not(:last-child)::after {
+              display: none;
+          }
+
+          .exchange-toolbar,
+          .section-head {
+              align-items: flex-start;
+              flex-direction: column;
+          }
+
+          .exchange-filter form {
+              align-items: flex-start;
+              flex-direction: column;
+          }
+
+          .exchange-chart-pair {
+              grid-template-columns: 1fr;
+          }
+      }
+  </style>
+  <div class="exchange-dashboard">
+    <div class="exchange-toolbar">
+      <div class="exchange-toolbar__scope">
+        <i>
+        </i>
+        <span>분석 범위</span>
+        <strong>{{ current_label }}</strong>
+        {% if compare_label %}
+          <span>· {{ compare_label }} 비교</span>
+        {% endif %}
+      </div>
+      <button type="button"
+              class="exchange-filter-toggle"
+              onclick="toggleExchangeFilter()">기간 및 비교 설정</button>
+    </div>
+    <div id="exchangeFilter"
+         class="exchange-filter {% if request.query_params.get('start') %}show{% endif %}">
+      <form method="get">
+        <input type="hidden" name="page" value="2">
+        <input type="hidden" name="year" value="{{ dashboard_year_param }}">
+        <div class="exchange-filter__row">
+          <strong>기준 기간</strong>
+          <div class="exchange-filter__group">
+            <input type="date"
+                   name="start"
+                   value="{{ request.query_params.get('start', filter_start) }}">
+            <span>~</span>
+            <input type="date"
+                   name="end"
+                   value="{{ request.query_params.get('end', filter_end) }}">
+          </div>
+          <strong>비교 기간</strong>
+          <div class="exchange-filter__group">
+            <input type="date"
+                   name="compare_start"
+                   value="{{ request.query_params.get('compare_start', '') }}">
+            <span>~</span>
+            <input type="date"
+                   name="compare_end"
+                   value="{{ request.query_params.get('compare_end', '') }}">
+          </div>
+        </div>
+        <div class="exchange-filter__actions">
+          <a href="?page=2">초기화</a>
+          <button type="submit">적용</button>
+        </div>
+      </form>
+    </div>
+    <section class="exchange-kpi-grid" aria-label="핵심 운영 지표">
+      <article class="exchange-kpi" style="--tone:var(--ex-blue)">
+        <div class="exchange-kpi__top">
+          <span class="exchange-kpi__label">전체 교품 접수</span>
+          <span class="exchange-kpi__badge">INTAKE</span>
+        </div>
+        <div class="exchange-kpi__value">
+          {{ total_exchange }}
+          <small>건</small>
+        </div>
+        <div class="exchange-kpi__meta">
+          <span>일반 {{ exchange_only_count }}건</span>
+          <span>Cradle {{ cradle_exchange_count }}건</span>
+        </div>
+      </article>
+      <article class="exchange-kpi"
+               style="--tone:var(--ex-teal);
+                      --progress:{{ recovery_rate }}%">
+        <div class="exchange-kpi__top">
+          <span class="exchange-kpi__label">회수 완료율</span>
+          <span class="exchange-kpi__badge">RECOVERY</span>
+        </div>
+        <div class="exchange-kpi__value">
+          {{ recovery_rate }}<small>%</small>
+        </div>
+        <div class="exchange-kpi__meta">
+          <span>{{ recovery_count }}건 회수</span>
+          <span>{{ waiting_count }}건 대기</span>
+        </div>
+        <div class="exchange-progress">
+          <span></span>
+        </div>
+      </article>
+      <article class="exchange-kpi"
+               style="--tone:var(--ex-mint);
+                      --progress:{{ end_to_end_rate }}%">
+        <div class="exchange-kpi__top">
+          <span class="exchange-kpi__label">전체 분석 완료율</span>
+          <span class="exchange-kpi__badge">END TO END</span>
+        </div>
+        <div class="exchange-kpi__value">
+          {{ end_to_end_rate }}<small>%</small>
+        </div>
+        <div class="exchange-kpi__meta">
+          <span>{{ total_done }}건 완료</span>
+          <span>접수 대비</span>
+        </div>
+        <div class="exchange-progress">
+          <span></span>
+        </div>
+      </article>
+      <article class="exchange-kpi" style="--tone:var(--ex-amber)">
+        <div class="exchange-kpi__top">
+          <span class="exchange-kpi__label">회수 리드타임</span>
+          <span class="exchange-kpi__badge">LEAD TIME</span>
+        </div>
+        <div class="exchange-kpi__value">
+          {{ recovery_leadtime_average if recovery_leadtime_average is not none else '-' }}
+          <small>일 평균</small>
+        </div>
+        <div class="exchange-kpi__meta">
+          <span>중앙값 {{ recovery_leadtime_median if recovery_leadtime_median is not none else '-' }}일</span>
+          <span>완료 기준</span>
+        </div>
+      </article>
+    </section>
+    <section class="exchange-queue" aria-label="업무 대기 현황">
+      <article class="queue-card" style="--queue-color:#d85f58;--queue-soft:#fff0ef">
+        <span class="queue-card__icon">WAIT</span>
+        <span>
+          <strong>회수 대기</strong>
+          <small>아직 회수일이 없는 접수</small>
+        </span>
+        <b>{{ waiting_count }}</b>
+      </article>
+      <article class="queue-card" style="--queue-color:#c9761d;--queue-soft:#fff6e8">
+        <span class="queue-card__icon">15D+</span>
+        <span>
+          <strong>장기 미회수</strong>
+          <small>{% if oldest_waiting_days is not none %}최장 {{ oldest_waiting_days }}일 대기{% else %}대기 없음{% endif %}</small>
+        </span>
+        <b>{{ long_waiting_count }}</b>
+      </article>
+      <article class="queue-card" style="--queue-color:#3975d5;--queue-soft:#edf4ff">
+        <span class="queue-card__icon">QA</span>
+        <span>
+          <strong>품질 등록 대기</strong>
+          <small>회수 완료 후 품질 미등록</small>
+        </span>
+        <b>{{ quality_pending_count }}</b>
+      </article>
+      <article class="queue-card" style="--queue-color:#7b61c9;--queue-soft:#f4f0ff">
+        <span class="queue-card__icon">LAB</span>
+        <span>
+          <strong>분석 완료 대기</strong>
+          <small>품질 등록 후 분석 미완료</small>
+        </span>
+        <b>{{ analysis_pending_count }}</b>
+      </article>
+    </section>
+    <section class="pipeline-card">
+      <div class="section-head">
+        <div>
+          <h3>처리 파이프라인</h3>
+        </div>
+        <span class="exchange-kpi__badge" style="--tone:var(--ex-teal)">{{ current_label }}</span>
+      </div>
+      <div class="pipeline">
+        <article class="pipeline-stage"
+                 style="--stage-color:#3975d5;
+                        --stage-progress:100%">
+          <span class="pipeline-stage__step">STEP 01 · 교품 접수</span>
+          <div class="pipeline-stage__body">
+            <strong>{{ total_exchange }}건</strong>
+            <span>100%</span>
+          </div>
+          <div class="pipeline-stage__bar">
+            <i>
+            </i>
+          </div>
+        </article>
+        <article class="pipeline-stage"
+                 style="--stage-color:#117589;
+                        --stage-progress:{{ recovery_rate }}%">
+          <span class="pipeline-stage__step">STEP 02 · 회수</span>
+          <div class="pipeline-stage__body">
+            <strong>{{ recovery_count }}건</strong>
+            <span>{{ recovery_rate }}%</span>
+          </div>
+          <div class="pipeline-stage__bar">
+            <i>
+            </i>
+          </div>
+        </article>
+        <article class="pipeline-stage"
+                 style="--stage-color:#2fa584;
+                        --stage-progress:{{ quality_overall_rate }}%">
+          <span class="pipeline-stage__step">STEP 03 · 품질 등록</span>
+          <div class="pipeline-stage__body">
+            <strong>{{ quality_done }}건</strong>
+            <span>{{ quality_overall_rate }}%</span>
+          </div>
+          <div class="pipeline-stage__bar">
+            <i>
+            </i>
+          </div>
+        </article>
+        <article class="pipeline-stage"
+                 style="--stage-color:#7b61c9;
+                        --stage-progress:{{ end_to_end_rate }}%">
+          <span class="pipeline-stage__step">STEP 04 · 분석 완료</span>
+          <div class="pipeline-stage__body">
+            <strong>{{ total_done }}건</strong>
+            <span>{{ end_to_end_rate }}%</span>
+          </div>
+          <div class="pipeline-stage__bar">
+            <i>
+            </i>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="exchange-charts" aria-label="교품 회수 상세 차트">
+      <article class="exchange-chart-card">
+        <div class="section-head">
+          <div>
+            <h3>월별 접수 및 회수 대기 추이</h3>
+            <p>일반 교품과 Cradle 교품은 나란한 막대로, 아직 회수되지 않은 건은 붉은 선으로 표시합니다.</p>
+          </div>
+          <div class="chart-series-summary" aria-label="차트 계열 요약">
+            <span style="--series-color:#205a8e">
+              <i>
+              </i>일반 교품 <b>{{ exchange_only_count }}건</b>
+            </span>
+            <span style="--series-color:#20a39e">
+              <i>
+              </i>Cradle <b>{{ cradle_exchange_count }}건</b>
+            </span>
+            <span style="--series-color:#e05252">
+              <i>
+              </i>미회수 <b>{{ waiting_count }}건</b>
+            </span>
+          </div>
+        </div>
+        <div class="chart-canvas">
+          <canvas id="exchangeIntakeChart">
+          </canvas>
+        </div>
+      </article>
+      <article class="exchange-chart-card">
+        <div class="section-head">
+          <div>
+            <h3>월별 단계 완료율</h3>
+            <p>접수 월 기준 회수, 품질 등록, 최종 분석 완료율의 변화를 보여줍니다.</p>
+          </div>
+        </div>
+        <div class="chart-canvas">
+          <canvas id="completionTrendChart">
+          </canvas>
+        </div>
+      </article>
+      <article class="exchange-chart-card">
+        <div class="section-head">
+          <div>
+            <h3>단계별 잔존 건수</h3>
+            <p>교품 접수부터 분석 완료까지 단계별 건수와 이전 단계 대비 전환율을 확인합니다.</p>
+          </div>
+        </div>
+        <div class="chart-canvas compact">
+          <canvas id="pipelineChart">
+          </canvas>
+        </div>
+      </article>
+      <div class="exchange-chart-pair">
+        <article class="exchange-chart-card">
+          <div class="section-head">
+            <div>
+              <h3>미회수 경과일 분포</h3>
+              <p>현재 회수 대기 중인 건을 접수일로부터 오늘까지의 경과일 기준으로 구분합니다.</p>
+            </div>
+            <span class="chart-insight">현재 대기 범위
+              <b>
+                {% if shortest_waiting_days is not none %}
+                  {{ shortest_waiting_days }}~{{ oldest_waiting_days }}일
+                {% else %}대기 없음
+                {% endif %}
+              </b>
+            </span>
+          </div>
+          <div class="chart-canvas compact">
+            <canvas id="waitingAgeChart">
+            </canvas>
+          </div>
+        </article>
+        <article class="exchange-chart-card">
+          <div class="section-head">
+            <div>
+              <h3>회수 완료 리드타임 분포</h3>
+              <p>회수 필요 건이 실제로 며칠 안에 회수됐는지 보여줍니다.</p>
+            </div>
+          </div>
+          <div class="chart-canvas compact">
+            <canvas id="recoveryLeadtimeChart">
+            </canvas>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/dashboard_charts.js?v=20260826-3"></script>
+  <script>
+      function toggleExchangeFilter() {
+          document.getElementById("exchangeFilter")?.classList.toggle("show")
+      }
+      const monthLabels = JSON.parse('{{ month_labels | tojson | safe }}')
+      const exchangeData = JSON.parse('{{ monthly_exchange_chart | tojson | safe }}')
+      const cradleData = JSON.parse('{{ monthly_cradle_chart | tojson | safe }}')
+      const monthlyWaiting = JSON.parse('{{ monthly_waiting_counts | tojson | safe }}')
+      const recoveryRates = JSON.parse('{{ monthly_recovery_rates | tojson | safe }}')
+      const qualityRates = JSON.parse('{{ monthly_quality_rates | tojson | safe }}')
+      const doneRates = JSON.parse('{{ monthly_done_rates | tojson | safe }}')
+      const stageLabels = JSON.parse('{{ stage_labels | tojson | safe }}')
+      const stageCounts = JSON.parse('{{ stage_counts | tojson | safe }}')
+      const waitingAgeLabels = JSON.parse('{{ waiting_age_bucket_labels | tojson | safe }}')
+      const waitingAgeCounts = JSON.parse('{{ waiting_age_bucket_counts | tojson | safe }}')
+      const leadtimeLabels = JSON.parse('{{ leadtime_bucket_labels | tojson | safe }}')
+      const leadtimeCounts = JSON.parse('{{ leadtime_bucket_counts | tojson | safe }}')
+      const chartColors = {
+          navy: "#17324d",
+          teal: "#117589",
+          mint: "#2fa584",
+          blue: "#3975d5",
+          amber: "#d48726",
+          coral: "#d85f58",
+          violet: "#7b61c9",
+          grid: "#e8edf2"
+      }
+      const valueLabels = {
+          id: "exchangeValueLabels",
+          afterDatasetsDraw(chart) {
+              const {
+                  ctx,
+                  chartArea
+              } = chart
+              chart.data.datasets.forEach((dataset, datasetIndex) => {
+                  if (!dataset.showValues || !chart.isDatasetVisible(datasetIndex)) return
+                  const meta = chart.getDatasetMeta(datasetIndex)
+                  meta.data.forEach((element, index) => {
+                      const value = dataset.data[index]
+                      if (value === null || value === undefined) return
+                      if (value === 0 && dataset.showZeroValues === false) return
+                      const text = dataset.valueSuffix === "%" ? `${value}%` : `${value}건`
+                      ctx.save()
+                      ctx.font = "700 12px Pretendard, sans-serif"
+                      ctx.fillStyle = dataset.labelColor || dataset.borderColor || chartColors.navy
+                      if (meta.type === "bar" && chart.options.indexAxis === "y") {
+                          ctx.textAlign = "left"
+                          ctx.textBaseline = "middle"
+                          ctx.fillText(text, Math.min(element.x + 8, chartArea.right - 30), element.y)
+                      } else if (meta.type === "bar") {
+                          ctx.textAlign = "center"
+                          if (dataset.valuePosition === "inside" && element.height >= 18) {
+                              ctx.textBaseline = "top"
+                              ctx.fillStyle = dataset.insideLabelColor || "#ffffff"
+                              ctx.fillText(text, element.x, element.y + 7)
+                          } else {
+                              ctx.textBaseline = "bottom"
+                              ctx.fillText(text, element.x, Math.max(element.y - 7, chartArea.top + 10))
+                          }
+                      } else {
+                          ctx.textAlign = "center"
+                          ctx.textBaseline = "bottom"
+                          const offset = 10 + (datasetIndex % 3) * 12
+                          ctx.fillText(text, element.x, Math.max(element.y - offset, chartArea.top + 10))
+                      }
+                      ctx.restore()
+                  })
+              })
+          }
+      }
+
+      const commonOptions = {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+              mode: "index",
+              intersect: false
+          },
+          layout: {
+              padding: {
+                  top: 24,
+                  right: 24,
+                  bottom: 4,
+                  left: 6
+              }
+          },
+          plugins: {
+              legend: {
+                  position: "bottom",
+                  labels: {
+                      usePointStyle: true,
+                      padding: 18,
+                      color: "#43546a",
+                      font: {
+                          size: 12,
+                          weight: 600
+                      }
+                  }
+              },
+              tooltip: {
+                  mode: "index",
+                  intersect: false
+              }
+          },
+          scales: {
+              x: {
+                  grid: {
+                      display: false
+                  },
+                  ticks: {
+                      color: "#43546a",
+                      font: {
+                          size: 12,
+                          weight: 600
+                      }
+                  }
+              },
+              y: {
+                  beginAtZero: true,
+                  grid: {
+                      color: chartColors.grid
+                  },
+                  ticks: {
+                      color: "#43546a",
+                      font: {
+                          size: 12,
+                          weight: 600
+                      },
+                      precision: 0
+                  }
+              }
+          }
+      }
+
+      new Chart(document.getElementById("exchangeIntakeChart"), {
+          type: "bar",
+          data: {
+              labels: monthLabels,
+              datasets: [{
+                  label: "일반 교품",
+                  data: exchangeData,
+                  backgroundColor: "#205a8e",
+                  borderColor: "#17466f",
+                  borderWidth: 1,
+                  borderRadius: 6,
+                  categoryPercentage: .7,
+                  barPercentage: .84,
+                  showValues: true,
+                  showZeroValues: false,
+                  valuePosition: "inside",
+                  insideLabelColor: "#ffffff"
+              }, {
+                  label: "Cradle 교품",
+                  data: cradleData,
+                  backgroundColor: "#20a39e",
+                  borderColor: "#157e7a",
+                  borderWidth: 1,
+                  borderRadius: 6,
+                  categoryPercentage: .7,
+                  barPercentage: .84,
+                  showValues: true,
+                  showZeroValues: false,
+                  valuePosition: "inside",
+                  insideLabelColor: "#ffffff"
+              }, {
+                  type: "line",
+                  label: "미회수",
+                  data: monthlyWaiting,
+                  borderColor: "#e05252",
+                  pointBackgroundColor: "#ffffff",
+                  pointBorderColor: "#e05252",
+                  pointBorderWidth: 3,
+                  pointRadius: 5,
+                  pointHoverRadius: 7,
+                  borderWidth: 3,
+                  borderDash: [7, 5],
+                  tension: .25,
+                  fill: false,
+                  showValues: true,
+                  showZeroValues: false,
+                  labelColor: "#c43e3e",
+                  order: -1
+              }]
+          },
+          options: {
+              ...commonOptions,
+              layout: {
+                  padding: {
+                      top: 30,
+                      right: 24,
+                      bottom: 4,
+                      left: 6
+                  }
+              },
+              plugins: {
+                  ...commonOptions.plugins,
+                  legend: {
+                      display: false
+                  }
+              },
+              scales: {
+                  x: {
+                      ...commonOptions.scales.x,
+                      stacked: false
+                  },
+                  y: {
+                      ...commonOptions.scales.y,
+                      stacked: false,
+                      title: {
+                          display: true,
+                          text: "건수",
+                          color: "#43546a",
+                          font: {
+                              size: 12,
+                              weight: 700
+                          }
+                      }
+                  }
+              }
+          },
+          plugins: [valueLabels]
+      })
+
+      new Chart(document.getElementById("completionTrendChart"), {
+          type: "line",
+          data: {
+              labels: monthLabels,
+              datasets: [{
+                  label: "회수 완료율",
+                  data: recoveryRates,
+                  borderColor: chartColors.teal,
+                  backgroundColor: "rgba(17,117,137,.1)",
+                  pointRadius: 4,
+                  borderWidth: 2.3,
+                  tension: .32,
+                  showValues: true,
+                  valueSuffix: "%"
+              }, {
+                  label: "품질 등록률",
+                  data: qualityRates,
+                  borderColor: chartColors.amber,
+                  backgroundColor: "rgba(212,135,38,.1)",
+                  pointRadius: 4,
+                  borderWidth: 2.3,
+                  tension: .32,
+                  showValues: true,
+                  valueSuffix: "%"
+              }, {
+                  label: "분석 완료율",
+                  data: doneRates,
+                  borderColor: chartColors.mint,
+                  backgroundColor: "rgba(47,165,132,.1)",
+                  pointRadius: 4,
+                  borderWidth: 2.3,
+                  tension: .32,
+                  showValues: true,
+                  valueSuffix: "%"
+              }]
+          },
+          options: {
+              ...commonOptions,
+              scales: {
+                  ...commonOptions.scales,
+                  y: {
+                      ...commonOptions.scales.y,
+                      max: 100,
+                      ticks: {
+                          ...commonOptions.scales.y.ticks,
+                          callback: value => `${value}%`
+                      }
+                  }
+              }
+          },
+          plugins: [valueLabels]
+      })
+
+      new Chart(document.getElementById("pipelineChart"), {
+          type: "bar",
+          data: {
+              labels: stageLabels,
+              datasets: [{
+                  label: "단계 도달 건수",
+                  data: stageCounts,
+                  backgroundColor: [chartColors.blue, chartColors.teal, chartColors.mint, chartColors.violet],
+                  borderRadius: 7,
+                  showValues: true
+              }]
+          },
+          options: {
+              ...commonOptions,
+              indexAxis: "y",
+              layout: {
+                  padding: {
+                      top: 8,
+                      right: 52,
+                      bottom: 4,
+                      left: 4
+                  }
+              },
+              plugins: {
+                  ...commonOptions.plugins,
+                  legend: {
+                      display: false
+                  }
+              },
+              scales: {
+                  x: {
+                      ...commonOptions.scales.y
+                  },
+                  y: {
+                      ...commonOptions.scales.x
+                  }
+              }
+          },
+          plugins: [valueLabels]
+      })
+
+      new Chart(document.getElementById("waitingAgeChart"), {
+          type: "bar",
+          data: {
+              labels: waitingAgeLabels,
+              datasets: [{
+                  label: "회수 대기",
+                  data: waitingAgeCounts,
+                  backgroundColor: ["#87c8d2", "#55aabc", "#d9a448", "#e27a52", "#c84f52"],
+                  borderRadius: 7,
+                  showValues: true
+              }]
+          },
+          options: {
+              ...commonOptions,
+              plugins: {
+                  ...commonOptions.plugins,
+                  legend: {
+                      display: false
+                  }
+              }
+          },
+          plugins: [valueLabels]
+      })
+
+      new Chart(document.getElementById("recoveryLeadtimeChart"), {
+          type: "bar",
+          data: {
+              labels: leadtimeLabels,
+              datasets: [{
+                  label: "회수 완료",
+                  data: leadtimeCounts,
+                  backgroundColor: ["#8ccfd8", "#62b9c8", "#3b96aa", "#d99a42", "#d85f58"],
+                  borderRadius: 7,
+                  showValues: true
+              }]
+          },
+          options: {
+              ...commonOptions,
+              plugins: {
+                  ...commonOptions.plugins,
+                  legend: {
+                      display: false
+                  }
+              }
+          },
+          plugins: [valueLabels]
+      })
+  </script>
+{% endblock %}

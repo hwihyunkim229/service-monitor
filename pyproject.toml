@@ -1,0 +1,12 @@
+[tool.black]
+line-length = 88
+target-version = ["py312"]
+
+[tool.djlint]
+profile = "jinja"
+indent = 2
+indent_css = 2
+indent_js = 2
+format_css = true
+format_js = true
+max_line_length = 120

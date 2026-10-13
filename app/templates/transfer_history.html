@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+{% block content %}
+  <style>
+      .transfer-history-table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+          background: #fff;
+          overflow: hidden;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+      }
+
+      .transfer-history-table th,
+      .transfer-history-table td {
+          padding: 14px 16px;
+          border-bottom: 1px solid #e5e7eb;
+          border-right: 1px solid #edf1f5;
+          vertical-align: top;
+          text-align: center;
+      }
+
+      .transfer-history-table td {
+          min-height: 54px;
+          color: #26364b;
+          font-size: 14px;
+          line-height: 1.55;
+      }
+
+      .transfer-history-table td.kst-time {
+          min-width: 175px;
+          color: #34475b;
+          font-size: 14px;
+          font-weight: 700;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+      }
+
+      .transfer-history-table th:last-child,
+      .transfer-history-table td:last-child {
+          border-right: 0;
+      }
+
+      .transfer-history-table th {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          background: #f8fafc;
+          color: #475569;
+          font-size: 14px;
+          font-weight: 700;
+          box-shadow: 0 1px 0 #e5e7eb;
+      }
+
+      .transfer-history-table tr:last-child td {
+          border-bottom: 0;
+      }
+
+      .transfer-history-table tbody tr:hover {
+          background: #fafcff;
+      }
+
+      .type-badge,
+      .status-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 9px;
+          border-radius: 999px;
+          font-size: 13px;
+          font-weight: 700;
+      }
+
+      .type-badge {
+          background: #eef2ff;
+          color: #4338ca;
+      }
+
+      .status-requested {
+          background: #fff7ed;
+          color: #c2410c;
+      }
+
+      .status-approved {
+          background: #ecfdf5;
+          color: #15803d;
+      }
+
+      .status-rejected {
+          background: #fef2f2;
+          color: #dc2626;
+      }
+
+      .serial-chip {
+          display: inline-block;
+          margin: 2px 4px 2px 0;
+          padding: 4px 7px;
+          border-radius: 5px;
+          background: #f1f5f9;
+          color: #334155;
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-size: 14px;
+          font-weight: 700;
+      }
+
+      .timeline {
+          display: grid;
+          gap: 8px;
+          text-align: left;
+      }
+
+      .timeline-entry {
+          display: grid;
+          grid-template-columns: 8px auto 1fr;
+          column-gap: 8px;
+          align-items: start;
+          font-size: 14px;
+      }
+
+      .timeline-dot {
+          width: 8px;
+          height: 8px;
+          margin-top: 5px;
+          border-radius: 50%;
+          background: #94a3b8;
+      }
+
+      .timeline-dot.approved {
+          background: #22c55e;
+      }
+
+      .timeline-dot.rejected {
+          background: #ef4444;
+      }
+
+      .timeline-dot.requested {
+          background: #f59e0b;
+      }
+
+      .timeline-label {
+          font-weight: 700;
+          color: #334155;
+      }
+
+      .timeline-time {
+          color: #64748b;
+          font-size: 13px;
+          font-weight: 650;
+          font-variant-numeric: tabular-nums;
+          white-space: nowrap;
+      }
+
+      .rejection-box {
+          margin-top: 10px;
+          padding: 9px 10px;
+          border-left: 3px solid #ef4444;
+          border-radius: 4px;
+          background: #fef2f2;
+          color: #991b1b;
+          font-size: 14px;
+          text-align: left;
+      }
+
+      .excel-icon img {
+          width: 26px;
+          cursor: pointer;
+          display: block;
+      }
+
+      .review-actions {
+          display: flex;
+          justify-content: center;
+          gap: 7px
+      }
+
+      .review-actions button {
+          min-height: 34px;
+          height: 34px;
+          padding: 0 12px;
+          font-size: 12px
+      }
+
+      .review-actions .approve {
+          border-color: #b8dfcf;
+          background: #ecf9f3;
+          color: #16724f
+      }
+
+      .review-actions .reject {
+          border-color: #efc8cc;
+          background: #fff3f4;
+          color: #b53b47
+      }
+
+      .history-empty {
+          height: 180px;
+          color: #8794a5;
+          font-size: 14px !important
+      }
+
+      .history-summary {
+          display: flex;
+          gap: 8px
+      }
+
+      .history-summary span {
+          padding: 7px 11px;
+          border-radius: 999px;
+          background: #f0f4f7;
+          color: #607184;
+          font-size: 12px;
+          font-weight: 750
+      }
+
+      .history-summary .pending {
+          background: #fff3df;
+          color: #9c5d08
+      }
+
+      #rejectReason {
+          min-height: 120px;
+          font-size: 14px
+      }
+  </style>
+  {% set counts = namespace(pending=0, approved=0, rejected=0) %}
+  {% for row in history_rows %}
+    {% if row.status == 'requested' %}
+      {% set counts.pending = counts.pending + 1 %}
+    {% elif row.status == 'approved' %}
+      {% set counts.approved = counts.approved + 1 %}
+    {% else %}
+      {% set counts.rejected = counts.rejected + 1 %}
+    {% endif %}
+  {% endfor %}
+  <section class="page-head">
+    <div class="page-title">
+      <span>QUALITY HANDOFF</span>
+      <h1>실물 이관 요청 관리</h1>
+      <p>교품·회수 → 품질, 품질 → 연구소의 실물 이관과 처리 이력을 함께 관리합니다.</p>
+    </div>
+    <div class="actions">
+      <a class="button secondary" href="/{{ product }}/exchange">교품/회수로 이동</a>
+      <a class="button secondary" href="/{{ product }}/quality">품질 분석으로 이동</a>
+      <a class="button secondary"
+         href="/{{ product }}/exchange/transfer-history/excel">Excel 다운로드</a>
+    </div>
+  </section>
+  <div class="workspace-toolbar">
+    <div class="history-summary">
+      <span class="pending">승인 대기 {{ counts.pending }}건</span>
+      <span>승인 완료 {{ counts.approved }}건</span>
+      <span>반려 {{ counts.rejected }}건</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="table-scroll">
+      <table class="transfer-history-table">
+        <thead>
+          <tr>
+            <th>이관 구간</th>
+            <th>요청일</th>
+            <th>이관 단위</th>
+            <th>S/N</th>
+            <th>처리 상태</th>
+            <th>처리 이력 / 반려 사유</th>
+            <th>승인 처리</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in history_rows %}
+            <tr>
+              <td>
+                <span class="type-badge">{{ '교품/회수 → 품질' if row.flow == 'quality' else '품질 → 연구소' }}</span>
+                {% if row.urgent %}
+                  <br>
+                  <span class="urgent-badge">긴급</span>
+                {% endif %}
+              </td>
+              <td class="kst-time" data-time="{{ row.requested_at }}"></td>
+              <td>
+                <span class="type-badge">{{ {"set":"세트", "ring":"Ring", "cradle":"Cradle"}[row.request_type] }}</span>
+              </td>
+              <td>
+                {% for item in row["items"] %}
+                  <span class="serial-chip">{{ item.serial_no }}</span>
+                {% endfor %}
+              </td>
+              <td>
+                <span class="status-badge status-{{ row.status }}">
+                  {{ {"requested":"승인 대기", "approved":"승인 완료", "rejected":"반려"}[row.status] }}
+                </span>
+              </td>
+              <td>
+                <div class="timeline">
+                  {% for entry in row.history %}
+                    <div class="timeline-entry">
+                      <span class="timeline-dot {{ entry.status }}"></span>
+                      <span class="timeline-label">{{ {"requested":"요청 등록", "approved":"승인 완료", "rejected":"반려 처리"}[entry.status] }}</span>
+                      <span class="timeline-time kst-time" data-time="{{ entry.created_at }}"></span>
+                    </div>
+                  {% endfor %}
+                </div>
+                {% if row.rejection_reason %}
+                  <div class="rejection-box">
+                    <strong>반려 사유</strong>
+                    <br>
+                    {{ row.rejection_reason }}
+                  </div>
+                {% endif %}
+              </td>
+              <td>
+                {% if row.status == 'requested' %}
+                  <div class="review-actions">
+                    <button type="button"
+                            class="approve"
+                            data-review="approved"
+                            data-flow="{{ row.flow }}"
+                            data-request-id="{{ row.id }}">승인</button>
+                    <button type="button"
+                            class="reject"
+                            data-review="rejected"
+                            data-flow="{{ row.flow }}"
+                            data-request-id="{{ row.id }}">반려</button>
+                  </div>
+                {% else %}
+                  <span class="muted-cell">처리 완료</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="history-empty">이관 요청 이력이 없습니다.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="modal-backdrop" id="rejectModal">
+    <div class="modal compact-modal">
+      <span class="modal-kicker">TRANSFER REVIEW</span>
+      <h2>이관 요청 반려</h2>
+      <p>반려 사유는 처리 이력에 기록됩니다.</p>
+      <textarea id="rejectReason" placeholder="반려 사유를 입력하세요."></textarea>
+      <div class="modal-actions">
+        <button class="secondary" id="rejectCancel" type="button">취소</button>
+        <button class="danger" id="rejectConfirm" type="button">반려 처리</button>
+      </div>
+    </div>
+  </div>
+  <script>
+      document.querySelectorAll(".kst-time").forEach(element => {
+          if (element.dataset.time) element.textContent = new Date(`${element.dataset.time}Z`).toLocaleString("ko-KR", {
+              timeZone: "Asia/Seoul"
+          });
+      });
+      const reviewRequest = async (id, flow, decision, reason = '') => {
+          const endpoint = flow === 'rnd' ? `/{{ product }}/lab/transfer-requests/${id}/review` : `/{{ product }}/exchange/transfer-requests/${id}/review`;
+          const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                  decision,
+                  reason
+              })
+          });
+          let detail = {};
+          try {
+              detail = await response.json()
+          } catch {}
+          if (!response.ok) {
+              showToast(detail.detail || '요청을 처리하지 못했습니다.', 'error');
+              return false
+          }
+          showToast(decision === 'approved' ? '품질 이관을 승인했습니다.' : '이관 요청을 반려했습니다.');
+          setTimeout(() => location.reload(), 500);
+          return true
+      };
+      document.querySelectorAll('[data-review="approved"]').forEach(button => button.onclick = async () => {
+          const confirmed = await showAppDialog('선택한 회수품을 품질 분석 대상으로 승인할까요?', {
+              title: '품질 이관 승인',
+              confirm: true
+          });
+          if (confirmed) reviewRequest(button.dataset.requestId, button.dataset.flow, 'approved')
+      });
+      const rejectModal = document.getElementById('rejectModal'),
+          rejectReason = document.getElementById('rejectReason');
+      let rejectId = null,
+          rejectFlow = null;
+      document.querySelectorAll('[data-review="rejected"]').forEach(button => button.onclick = () => {
+          rejectId = button.dataset.requestId;
+          rejectFlow = button.dataset.flow;
+          rejectReason.value = '';
+          rejectModal.classList.add('open');
+          rejectReason.focus()
+      });
+      document.getElementById('rejectCancel').onclick = () => rejectModal.classList.remove('open');
+      document.getElementById('rejectConfirm').onclick = () => {
+          const reason = rejectReason.value.trim();
+          if (!reason) {
+              showToast('반려 사유를 입력해 주세요.', 'error');
+              return
+          }
+          reviewRequest(rejectId, rejectFlow, 'rejected', reason)
+      };
+      rejectModal.addEventListener('click', event => {
+          if (event.target === rejectModal) rejectModal.classList.remove('open')
+      });
+  </script>
+{% endblock %}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8">
+    <title>회원가입 | CX System</title>
+    <link rel="stylesheet" href="/static/style.css">
+  </head>
+  <body class="login-body">
+    <div class="login-container">
+      <div class="login-card">
+        <h2>CS System</h2>
+        <p class="login-sub">계정 생성</p>
+        {% if error %}
+          <p class="error-msg">{{ error }}</p>
+        {% endif %}
+        <form method="post" action="/register">
+          <label>ID</label>
+          <input name="username" placeholder="아이디를 입력하세요" required>
+          <label>Password</label>
+          <input type="password" name="password" placeholder="비밀번호를 입력하세요" required>
+          <button class="login-btn">회원가입</button>
+        </form>
+        <div class="login-footer">
+          <a href="/login">← 로그인으로 돌아가기</a>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

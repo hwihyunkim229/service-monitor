@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Service Monitor 로그인</title>
+    <link rel="stylesheet" href="/static/style.css?v=1">
+  </head>
+  <body class="auth-page">
+    <main class="auth-card">
+      <section class="auth-brand">
+        <span class="brand-symbol">S</span>
+        <div>
+          <span>OPERATIONS CLOUD</span>
+          <h1>
+            서비스 이슈를
+            <br>
+            하나의 흐름으로.
+          </h1>
+          <p>접수부터 분석, 교품, 품질 검증과 최종 결과까지 연결된 업무 환경을 제공합니다.</p>
+        </div>
+      </section>
+      <section class="auth-form">
+        <div>
+          <span class="auth-eyebrow">WELCOME BACK</span>
+          <h2>Service Monitor</h2>
+          <p>업무 계정으로 로그인하세요.</p>
+        </div>
+        {% if error %}
+          <div class="auth-alert">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+          <div class="auth-success">{{ success }}</div>
+        {% endif %}
+        <form method="post" action="/login">
+          <label>
+            아이디
+            <input name="username" autocomplete="username" required placeholder="아이디 입력">
+          </label>
+          <label>
+            비밀번호<input type="password"
+       name="password"
+       autocomplete="current-password"
+       required
+       placeholder="비밀번호 입력">
+          </label>
+          <button type="submit">로그인</button>
+        </form>
+        <small class="auth-help">계정 또는 권한 문의는 시스템 관리자에게 요청하세요.</small>
+      </section>
+    </main>
+  </body>
+</html>

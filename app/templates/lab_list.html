@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+{% block content %}
+  <style>
+      .lab-context-btn {
+          min-height: 30px;
+          height: 30px;
+          padding: 0 10px;
+          border: 1px solid #c9dfe5;
+          border-radius: 8px;
+          background: #f1f8fa;
+          color: #176779;
+          font-size: 11px;
+          font-weight: 750
+      }
+
+      .lab-context-btn.quality {
+          border-color: #d9d7ee;
+          background: #f6f5fb;
+          color: #5f5a91
+      }
+
+      .lab-context-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 14px
+      }
+
+      .lab-context-card {
+          padding: 12px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: #f8fafc
+      }
+
+      .lab-context-card.wide {
+          grid-column: 1/-1
+      }
+
+      .lab-context-card span {
+          display: block;
+          margin-bottom: 5px;
+          color: var(--muted);
+          font-size: 11px;
+          font-weight: 700
+      }
+
+      .lab-context-card strong,
+      .lab-context-card p {
+          margin: 0;
+          color: #27364a;
+          font-size: 13px;
+          line-height: 1.55;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere
+      }
+
+      .lab-quality-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 9px;
+          margin-top: 14px;
+          max-height: 58vh;
+          overflow: auto
+      }
+
+      .lab-quality-item {
+          padding: 10px;
+          border: 1px solid #e2e8ee;
+          border-radius: 9px;
+          background: #f8fafc
+      }
+
+      .lab-quality-item span {
+          display: block;
+          margin-bottom: 4px;
+          color: #7a8798;
+          font-size: 10px;
+          font-weight: 700
+      }
+
+      .lab-quality-item strong {
+          color: #2b3b50;
+          font-size: 12px;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere
+      }
+
+      .lab-quality-item.wide {
+          grid-column: span 2
+      }
+
+      .transfer-request-list {
+          display: grid;
+          gap: 10px;
+          margin-top: 14px;
+          max-height: 55vh;
+          overflow: auto
+      }
+
+      .transfer-request-card {
+          padding: 14px;
+          border: 1px solid #dce6e4;
+          border-radius: 12px;
+          background: #f8fbfa
+      }
+
+      .transfer-request-card header {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px
+      }
+
+      .transfer-request-card p {
+          margin: 4px 0;
+          color: #556575;
+          font-size: 12px;
+          line-height: 1.5
+      }
+
+      .transfer-request-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 8px;
+          margin-top: 10px
+      }
+
+      @media(max-width:800px) {
+
+          .lab-context-grid,
+          .lab-quality-grid {
+              grid-template-columns: 1fr
+          }
+
+          .lab-context-card.wide,
+          .lab-quality-item.wide {
+              grid-column: auto
+          }
+      }
+  </style>
+  <section class="page-head">
+    <div class="page-title">
+      <span>R&amp;D INVESTIGATION</span>
+      <h1>연구소 분석</h1>
+      <p>품질 이관 건의 원인 분석, 판정, 증빙 자료를 관리합니다.</p>
+    </div>
+    <div class="actions">
+      <a class="button secondary"
+         href="/{{ product }}/exchange/transfer-history">전체 이관 이력</a>
+      <button class="button secondary" id="rndRequestOpen" type="button">
+        실물 이관 요청 관리 <span id="rndPendingBadge" class="urgent-badge" hidden></span>
+      </button>
+    </div>
+  </section>
+  <div class="metric-grid">
+    <article class="metric-card">
+      <span>분석 건</span>
+      <strong>{{ total_count }}</strong>
+      <small>연구소 이관 완료</small>
+    </article>
+    <article class="metric-card">
+      <span>현재 페이지</span>
+      <strong>{{ page }}</strong>
+      <small>총 {{ total_pages or 1 }} 페이지</small>
+    </article>
+    <article class="metric-card">
+      <span>검색 조건</span>
+      <strong class="metric-code">{{ keyword or '전체' }}</strong>
+      <small>통합 검색</small>
+    </article>
+  </div>
+  <div class="workspace-toolbar">
+    <form class="filters" method="get">
+      <input type="hidden" name="order" value="{{ order }}">
+      <label class="filter-field search">
+        통합 검색<input name="keyword" value="{{ keyword }}" placeholder="현재 페이지의 모든 내용 검색">
+      </label>
+      <label class="filter-field">
+        표시 개수<select name="limit">
+        <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
+        <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
+        </select>
+      </label>
+      <button type="submit">조회</button>
+      <a class="button secondary" href="/{{ product }}/lab">초기화</a>
+    </form>
+    <div class="sort-toggle">
+      <span class="sort-state">현재 {{ '내림차순' if order == 'desc' else '오름차순' }}</span>
+      <a class="button secondary"
+         href="?page=1&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ 'asc' if order == 'desc' else 'desc' }}">{{ '오름차순' if order == 'desc' else '내림차순' }}으로 정렬</a>
+      <span class="filter-field">전체 대상<strong>{{ total_count }}건</strong>
+      </span>
+    </div>
+  </div>
+  <div class="data-card">
+    <div class="table-scroll">
+      <table class="spreadsheet-enhanced">
+        <thead>
+          <tr>
+            <th>흐름</th>
+            <th>식별코드</th>
+            <th>S/N</th>
+            <th>품질 분석 완료일</th>
+            <th>CX 정보</th>
+            <th>품질 분석</th>
+            <th>불량 원인</th>
+            <th>분석 결과</th>
+            <th>불량 유형</th>
+            <th>비고</th>
+            <th>분석 완료일</th>
+            <th>첨부 자료</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% set cs = row.cs %}
+            {% set q = row.quality %}
+            {% set lab = row.lab %}
+            {% set cx = row.cx %}
+            <tr>
+              <td>
+                <button class="flow-btn"
+                        type="button"
+                        data-workflow-transfer="{{ cs.transfer_no }}"
+                        data-product="{{ product }}">보기</button>
+              </td>
+              <td>
+                <strong>{{ cs.transfer_no }}</strong>
+              </td>
+              <td>{{ lab.serial_no or cs.serial_no or '-' }}</td>
+              <td>{{ q.lab_transfer_date.strftime("%Y-%m-%d") if q.lab_transfer_date else '-' }}</td>
+              <td>
+                <button class="lab-context-btn lab-cx-open"
+                        type="button"
+                        data-transfer-no="{{ cs.transfer_no }}"
+                        data-category-main="{{ (cs.category_main or '')|e }}"
+                        data-category-sub="{{ (cs.category_sub or '')|e }}"
+                        data-description="{{ (cs.description or '')|e }}"
+                        data-issue1="{{ (cx.issue1 if cx else '')|e }}"
+                        data-depth-one-one="{{ (cx.depth1_1 if cx else '')|e }}"
+                        data-depth-one-two="{{ (cx.depth1_2 if cx else '')|e }}"
+                        data-issue2="{{ (cx.issue2 if cx else '')|e }}"
+                        data-depth-two-one="{{ (cx.depth2_1 if cx else '')|e }}"
+                        data-depth-two-two="{{ (cx.depth2_2 if cx else '')|e }}">보기</button>
+              </td>
+              <td>
+                <button class="lab-context-btn quality lab-quality-open"
+                        type="button"
+                        data-template="labQuality{{ lab.id }}"
+                        data-transfer-no="{{ cs.transfer_no }}">보기</button>
+                <template id="labQuality{{ lab.id }}">
+                  <div class="lab-quality-item">
+                    <span>품질 판정</span>
+                    <strong>{{ q.quality_result or '대기' }}</strong>
+                  </div>
+                  <div class="lab-quality-item">
+                    <span>품질 분석 완료일</span>
+                    <strong>{{ q.lab_transfer_date.strftime("%Y-%m-%d") if q.lab_transfer_date else '-' }}</strong>
+                  </div>
+                  {% for field,label in quality_columns %}
+                    {% if field != 'quality_result' %}
+                      <div class="lab-quality-item{% if field == 'defect_detail' %} wide{% endif %}">
+                        <span>{{ label }}</span>
+                        <strong>{{ q|attr(field) or '-' }}</strong>
+                      </div>
+                    {% endif %}
+                  {% endfor %}
+                </template>
+              </td>
+              {% for f in ['root_cause','analysis_result','defect_type','remark'] %}
+                <td contenteditable="true"
+                    data-id="{{ lab.id }}"
+                    data-field="{{ f }}"
+                    class="inquiry">{{ lab|attr(f) or '' }}</td>
+              {% endfor %}
+              <td>
+                <input type="date"
+                       data-id="{{ lab.id }}"
+                       data-field="analysis_completed_date"
+                       value="{{ lab.analysis_completed_date.strftime('%Y-%m-%d') if lab.analysis_completed_date else '' }}">
+              </td>
+              <td>
+                <label class="file-action">
+                  파일 선택<input type="file" data-upload="{{ cs.transfer_no }}">
+                </label>
+                <small class="file-count">{{ (lab.attachment|from_json)|length }}개</small>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="12" class="empty-state">연구소 분석 대상이 없습니다.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="footer-row"
+       data-page="{{ page }}"
+       data-total-pages="{{ total_pages or 1 }}">
+    <span>총 {{ total_count }}건</span>
+    <span>
+      {% if page>1 %}
+        <a href="?page={{ page-1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ order }}">이전</a>
+      {% endif %} &nbsp; {{ page }} / {{ total_pages or 1 }} &nbsp; {% if page<total_pages %}
+      <a href="?page={{ page+1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ order }}">다음</a>
+{% endif %}
+</span>
+</div>
+<div class="modal-backdrop" id="labCxModal">
+  <div class="modal flow-modal">
+    <span class="modal-kicker">CX CONTEXT</span>
+    <h2>CX 접수 정보</h2>
+    <p id="labCxCode"></p>
+    <div class="lab-context-grid">
+      <div class="lab-context-card wide">
+        <span>접수 유형</span>
+        <strong id="labCxCategory">-</strong>
+      </div>
+      <div class="lab-context-card">
+        <span>CX 분석 원인 1</span>
+        <strong id="labCxCause1">-</strong>
+      </div>
+      <div class="lab-context-card">
+        <span>CX 분석 원인 2</span>
+        <strong id="labCxCause2">-</strong>
+      </div>
+      <div class="lab-context-card wide">
+        <span>문의사항</span>
+        <p id="labCxInquiry">-</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" data-close="labCxModal" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="rndRequestModal">
+  <div class="modal flow-modal">
+    <span class="modal-kicker">PHYSICAL TRANSFER</span>
+    <h2>품질 → 연구소 실물 이관 요청</h2>
+    <p>실물을 인계받은 뒤 승인하면 연구소 분석 목록에 추가됩니다.</p>
+    <div class="transfer-request-list" id="rndRequestList"></div>
+    <div class="modal-actions">
+      <button class="secondary" data-close="rndRequestModal" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="rndRejectModal">
+  <div class="modal compact-modal">
+    <span class="modal-kicker">TRANSFER REVIEW</span>
+    <h2>연구소 이관 요청 반려</h2>
+    <p>반려 사유는 실물 이관 처리 이력에 기록됩니다.</p>
+    <textarea id="rndRejectReason" placeholder="반려 사유를 입력하세요."></textarea>
+    <div class="modal-actions">
+      <button class="secondary" id="rndRejectCancel" type="button">취소</button>
+      <button class="danger" id="rndRejectConfirm" type="button">반려 처리</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="labQualityModal">
+  <div class="modal flow-modal">
+    <span class="modal-kicker">QUALITY CONTEXT</span>
+    <h2>품질 분석 정보</h2>
+    <p id="labQualityCode"></p>
+    <div class="lab-quality-grid" id="labQualityBody"></div>
+    <div class="modal-actions">
+      <button class="secondary" data-close="labQualityModal" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+<script>
+    const textOrDash = value => value && value.trim() ? value.trim() : '-';
+    const rndRequestModal = document.getElementById('rndRequestModal');
+    const rndRejectModal = document.getElementById('rndRejectModal');
+    const rndRejectReason = document.getElementById('rndRejectReason');
+    let rndRejectRequestId = null;
+    const loadRndRequests = async () => {
+        const response = await fetch(`/{{ product }}/lab/transfer-requests?status=requested`);
+        const data = await response.json().catch(() => ({}));
+        const requests = data.requests || [];
+        const badge = document.getElementById('rndPendingBadge');
+        badge.hidden = requests.length === 0;
+        badge.textContent = `${requests.length}건`;
+        document.getElementById('rndRequestList').innerHTML = requests.length ? requests.map(request => `
+              <article class="transfer-request-card" data-request-id="${request.id}">
+                <header><strong>${request.urgent ? '<span class="urgent-badge">긴급</span> ' : ''}이관 요청 #${request.id} · ${({set:'Set',ring:'Ring',cradle:'Cradle'})[request.request_type] || request.request_type}</strong><span>${request.requested_at ? new Date(request.requested_at).toLocaleString('ko-KR', {timeZone:'Asia/Seoul'}) : '-'}</span></header>
+                <p>${request.items.map(item => `${item.transfer_no} · ${item.serial_no || '-'}`).join('<br>')}</p>
+                <div class="transfer-request-actions"><button class="secondary" data-review="rejected" type="button">반려</button><button data-review="approved" type="button">실물 인수 승인</button></div>
+              </article>`).join('') : '<div class="empty-state">대기 중인 실물 이관 요청이 없습니다.</div>';
+    };
+    document.getElementById('rndRequestOpen').addEventListener('click', async () => {
+        await loadRndRequests();
+        rndRequestModal.classList.add('open')
+    });
+    const reviewRndRequest = async (requestId, decision, reason = '') => {
+        const response = await fetch(`/{{ product }}/lab/transfer-requests/${requestId}/review`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                decision,
+                reason
+            })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            showToast(data.detail || '이관 요청을 처리하지 못했습니다.', 'error');
+            return false;
+        }
+        showToast(decision === 'approved' ? '실물 인수를 승인했습니다.' : '이관 요청을 반려했습니다.');
+        if (decision === 'approved') setTimeout(() => location.reload(), 650);
+        else loadRndRequests();
+        return true;
+    };
+    document.getElementById('rndRequestList').addEventListener('click', async event => {
+        const button = event.target.closest('[data-review]');
+        if (!button) return;
+        const card = button.closest('[data-request-id]');
+        const decision = button.dataset.review;
+        if (decision === 'rejected') {
+            rndRejectRequestId = card.dataset.requestId;
+            rndRejectReason.value = '';
+            rndRejectModal.classList.add('open');
+            setTimeout(() => rndRejectReason.focus(), 0);
+            return;
+        }
+        button.disabled = true;
+        if (!await reviewRndRequest(card.dataset.requestId, decision)) button.disabled = false;
+    });
+    document.getElementById('rndRejectCancel').addEventListener('click', () => rndRejectModal.classList.remove('open'));
+    document.getElementById('rndRejectConfirm').addEventListener('click', async event => {
+        const reason = rndRejectReason.value.trim();
+        if (!reason) {
+            showToast('반려 사유를 입력해 주세요.', 'error');
+            return;
+        }
+        event.currentTarget.disabled = true;
+        if (await reviewRndRequest(rndRejectRequestId, 'rejected', reason)) rndRejectModal.classList.remove('open');
+        event.currentTarget.disabled = false;
+    });
+    rndRejectModal.addEventListener('click', event => {
+        if (event.target === rndRejectModal) rndRejectModal.classList.remove('open')
+    });
+    loadRndRequests();
+    document.querySelectorAll('.lab-cx-open').forEach(button => button.addEventListener('click', () => {
+        document.getElementById('labCxCode').textContent = `식별코드 ${button.dataset.transferNo}`;
+        document.getElementById('labCxCategory').textContent = textOrDash([button.dataset.categoryMain, button.dataset.categorySub].filter(Boolean).join(' > '));
+        document.getElementById('labCxCause1').textContent = textOrDash([button.dataset.issue1, button.dataset.depthOneOne, button.dataset.depthOneTwo].filter(Boolean).join(' > '));
+        document.getElementById('labCxCause2').textContent = textOrDash([button.dataset.issue2, button.dataset.depthTwoOne, button.dataset.depthTwoTwo].filter(Boolean).join(' > '));
+        document.getElementById('labCxInquiry').textContent = textOrDash(button.dataset.description);
+        document.getElementById('labCxModal').classList.add('open')
+    }));
+    document.querySelectorAll('.lab-quality-open').forEach(button => button.addEventListener('click', () => {
+        const template = document.getElementById(button.dataset.template);
+        document.getElementById('labQualityCode').textContent = `식별코드 ${button.dataset.transferNo}`;
+        document.getElementById('labQualityBody').innerHTML = template ? template.innerHTML : '';
+        document.getElementById('labQualityModal').classList.add('open')
+    }));
+    document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.close).classList.remove('open')));
+    document.querySelectorAll('[data-field]').forEach(el => el.addEventListener(el.tagName === 'INPUT' ? 'change' : 'blur', async () => {
+        const value = el.tagName === 'INPUT' ? el.value : el.textContent.trim();
+        const r = await fetch(`/{{product}}/lab/update/${el.dataset.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                field: el.dataset.field,
+                value
+            })
+        });
+        showToast(r.ok ? '분석 내용을 저장했습니다.' : '저장하지 못했습니다.', !r.ok)
+    }));
+    document.querySelectorAll('[data-upload]').forEach(el => el.addEventListener('change', async () => {
+        if (!el.files[0]) return;
+        const fd = new FormData();
+        fd.append('file', el.files[0]);
+        const r = await fetch(`/{{product}}/lab/upload/${el.dataset.upload}`, {
+            method: 'POST',
+            body: fd
+        });
+        showToast(r.ok ? '파일을 업로드했습니다.' : '업로드하지 못했습니다.', !r.ok)
+    }));
+</script>
+{% endblock %}

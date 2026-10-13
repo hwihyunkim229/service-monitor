@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+  <h2>LOT 등록량 가져오기</h2>
+  <form action="/lot/upload" method="post" enctype="multipart/form-data">
+    <label>주차:</label>
+    <input type="text" name="week" placeholder="2026-W10" required>
+    <br>
+    <br>
+    <input type="file" name="file" required>
+    <br>
+    <br>
+    <button type="submit">업로드</button>
+  </form>
+  {% if message %}
+    <p style="color: green;">{{ message }} (업데이트: {{ updated }}, 신규: {{ created }})</p>
+  {% endif %}
+{% endblock %}

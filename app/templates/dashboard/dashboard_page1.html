@@ -1,0 +1,794 @@
+{% extends "base.html" %}
+{% block page_name %}운영 대시보드 · 처리 시간{% endblock %}
+{% block content %}
+  {% set hero_eyebrow = "SERVICE PERFORMANCE" %}
+  {% set hero_title = "처리 시간 통계" %}
+  {% set hero_description = "CX 처리 시간과 목표 달성 수준, 처리 구간별 분포를 확인합니다." %}
+  {% set hero_badge = product %}
+  {% include "dashboard/_dashboard_hero.html" %}
+  <style>
+      .kpi-grid {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+          margin-bottom: 28px;
+      }
+
+      .kpi-card {
+          width: 260px;
+          background: #ffffff;
+          border-radius: 10px;
+          padding: 18px 14px;
+          text-align: center;
+          border: 1px solid #e5e7eb;
+          border-top: 3px solid #c2d3ed;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      }
+
+      .kpi-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+      }
+
+      .kpi-number {
+          font-size: 34px;
+          font-weight: 700;
+          color: #111827;
+      }
+
+      .kpi-title {
+          font-size: 13px;
+          color: #6b7280;
+          margin-top: 4px;
+      }
+
+      .kpi-change {
+          font-size: 12px;
+          margin-top: 6px;
+          font-weight: 600;
+      }
+
+      .kpi-change.up {
+          color: #16a34a;
+      }
+
+      .kpi-change.down {
+          color: #dc2626;
+      }
+
+      .kpi-change-base {
+          font-weight: 400;
+          font-size: 11px;
+          color: #6b7280;
+          margin-left: 4px;
+      }
+
+      .chart-card {
+          background: #ffffff;
+          border-radius: 10px;
+          border: 1px solid #e5e7eb;
+          padding: 18px 20px 22px;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+      }
+
+      .chart-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #111827;
+          margin-bottom: 14px;
+      }
+
+      .chart-wrapper {
+          position: relative;
+          height: 310px;
+      }
+
+      .chart-wrapper canvas {
+          position: absolute;
+          inset: 0;
+          width: 100% !important;
+          height: 100% !important;
+      }
+
+      .dashboard-container {
+          width: 100%;
+          max-width: 1100px;
+          margin: 0 auto;
+      }
+
+      .dashboard-header {
+          display: flex;
+          justify-content: left;
+          margin-bottom: 20px;
+      }
+
+      .chart-full {
+          width: 100%;
+          margin-bottom: 20px;
+      }
+
+      .chart-row {
+          display: flex;
+          gap: 20px;
+          margin-bottom: 20px;
+      }
+
+      .chart-half {
+          flex: 1;
+      }
+
+      .date-separator {
+          margin: 0 5px;
+          font-weight: bold;
+      }
+
+      .label {
+          width: 40px;
+          font-size: 12px;
+          color: #555;
+      }
+
+      .label.sub {
+          color: #999;
+      }
+
+      .dashboard-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 20px;
+      }
+
+      .date-filter-inline {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: nowrap;
+          white-space: nowrap;
+          flex-shrink: 0;
+      }
+
+      .date-filter-inline input {
+          padding: 5px 8px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          font-size: 12px;
+      }
+
+      .date-filter-inline span {
+          font-size: 12px;
+          color: #666;
+      }
+
+      .compare-label {
+          margin-left: 10px;
+          color: #999;
+      }
+
+      .date-line {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 8px;
+      }
+
+      .date-group {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+      }
+
+      .date-group input {
+          width: auto;
+          padding: 5px 8px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          font-size: 12px;
+      }
+
+      .label {
+          width: 40px;
+          font-size: 12px;
+          color: #666;
+      }
+
+      .label.sub {
+          color: #999;
+      }
+
+      .btn-inline {
+          display: flex;
+          gap: 6px;
+          margin-left: 10px;
+      }
+
+      .btn {
+          padding: 5px 10px;
+          font-size: 12px;
+          border-radius: 6px;
+          border: none;
+          cursor: pointer;
+          background: #fff;
+          color: black;
+      }
+
+      .btn.gray {
+          background: #fff;
+      }
+
+      .filter-btn {
+          margin-bottom: 10px;
+      }
+
+      .date-filter-block {
+          margin-top: 10px;
+          display: none;
+      }
+  </style>
+  <button onclick="toggleFilter()" class="btn filter-btn">📅 기간 필터</button>
+  <div id="dateFilter"
+       class="date-filter-block {% if request.query_params.get('start') %}show{% endif %}">
+    <form method="get">
+      <input type="hidden" name="page" value="{{ page }}">
+      <input type="hidden" name="year" value="{{ dashboard_year_param }}">
+      <div class="date-line">
+        <span class="label">기준</span>
+        <div class="date-group">
+          <input type="date"
+                 name="start"
+                 value="{{ request.query_params.get('start', '') }}">
+          <span>~</span>
+          <input type="date"
+                 name="end"
+                 value="{{ request.query_params.get('end', '') }}">
+        </div>
+        <div class="btn-inline">
+          <button type="submit" class="btn">조회</button>
+          <button type="button"
+                  onclick="location.href='?page={{ page }}&amp;year={{ dashboard_year_param }}'"
+                  class="btn gray">초기화</button>
+        </div>
+      </div>
+      <div class="date-line">
+        <span class="label sub">비교</span>
+        <div class="date-group">
+          <input type="date"
+                 name="compare_start"
+                 value="{{ request.query_params.get('compare_start', '') }}">
+          <span>~</span>
+          <input type="date"
+                 name="compare_end"
+                 value="{{ request.query_params.get('compare_end', '') }}">
+        </div>
+      </div>
+    </form>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-number">{{ total_cs }}</div>
+      <div class="kpi-title">CS 접수 건수</div>
+      <div class="kpi-change{% if cs_change is not none %} {{ 'up' if cs_change >=0 else 'down' }}{% endif %}">
+        {% if cs_change is not none %}
+          {% if cs_change >=0 %}▲{% else %}▼{% endif %}
+          {{ cs_change }}% ({{ cs_diff }}건)
+          <span>{{ compare_label }} 대비</span>
+        {% else %}
+          <span>{{ context_label }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number">{{ cx_done }}</div>
+      <div class="kpi-title">CX 처리 건수</div>
+      <div class="kpi-change{% if cx_change is not none %} {{ 'up' if cx_change >=0 else 'down' }}{% endif %}">
+        {% if cx_change is not none %}
+          {% if cx_change >=0 %}▲{% else %}▼{% endif %}
+          {{ cx_change }}% ({{ cx_diff }}건)
+          <span>{{ compare_label }} 대비</span>
+        {% else %}
+          <span>{{ context_label }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-number">{{ total_exchange }}</div>
+      <div class="kpi-title">교품 건수</div>
+      <div class="kpi-change{% if exchange_change is not none %} {{ 'up' if exchange_change >=0 else 'down' }}{% endif %}">
+        {% if exchange_change is not none %}
+          {% if exchange_change >=0 %}▲{% else %}▼{% endif %}
+          {{ exchange_change }}% ({{ exchange_diff }}건)
+          <span>{{ compare_label }} 대비</span>
+        {% else %}
+          <span>{{ context_label }}</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="dashboard-grid">
+    <div class="chart-full">
+      <div class="chart-card">
+        <div class="chart-title">CX 처리 시간 vs 목표</div>
+        <div class="chart-wrapper">
+          <canvas id="cxPerformanceChart">
+          </canvas>
+        </div>
+      </div>
+    </div>
+    <div class="chart-full">
+      <div class="chart-card">
+        <div class="chart-title">CX 처리 시간 분포</div>
+        <div class="chart-wrapper">
+          <canvas id="cxDistributionChart">
+          </canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/dashboard_charts.js?v=20260826-3"></script>
+  <script>
+      const product = "{{ product }}";
+      let medianPoints = {}
+
+      function toggleFilter() {
+          const el = document.getElementById("dateFilter");
+          const isHidden = getComputedStyle(el).display === "none";
+          el.style.display = isHidden ? "block" : "none";
+      }
+
+      const cxWeeks = JSON.parse('{{ weeks | tojson | safe }}')
+      const cx3q = JSON.parse('{{ cx_3q | tojson | safe }}')
+      const slaRate = JSON.parse('{{ sla_rate | tojson | safe }}')
+      const maxTime = JSON.parse('{{ max_time | tojson | safe }}')
+      const medianTime = JSON.parse('{{ median_time | tojson | safe }}')
+      const q3Time = JSON.parse('{{ q3_time | tojson | safe }}')
+
+      function formatTime(value) {
+          if (value === null || value === undefined) return ""
+          const minutes = Math.floor(value)
+          const seconds = Math.round((value - minutes) * 60)
+          return `${minutes}:${String(seconds).padStart(2,'0')}`
+
+      }
+
+      function validValue(point, value, dataset) {
+          if (!point) return false
+          if (dataset.hidden) return false
+          if (value === null || value === undefined) return false
+          if (value === 0) return false
+
+          return true
+      }
+
+      const chartLabelPlugin = {
+          id: "chartLabel",
+          afterDatasetsDraw(chart) {
+              const {
+                  ctx
+              } = chart
+
+              chart.data.datasets.forEach((dataset, i) => {
+                  if (!chart.isDatasetVisible(i)) return
+
+                  const meta = chart.getDatasetMeta(i)
+
+                  meta.data.forEach((point, index) => {
+                      if (!point) return
+
+                      const value = dataset.data[index]
+
+                      if (value === null || value === undefined) return
+                      if (value <= 0) return
+
+                      ctx.textAlign = "center"
+
+                      if (chart.canvas.id === "lossMonthChart") {
+                          if (dataset.type === "line" && !dataset.label.includes("목표")) {
+                              ctx.font = "10px sans-serif"
+                              ctx.textAlign = "center"
+                              ctx.fillStyle = dataset.borderColor
+                              ctx.fillText(
+                                  value.toFixed(3) + "%",
+                                  point.x,
+                                  dashboardLabelY(chart, point.y, 8)
+                              )
+                          }
+                      }
+
+                      if (chart.canvas.id === "lossWeekChart") {
+                          if (dataset.type === "line" && !dataset.label.includes("목표")) {
+
+                              const lost = dataset.label.includes("포함") ?
+                                  weekLostInclude[index] :
+                                  weekLostExclude[index]
+
+                              ctx.font = "10px sans-serif"
+                              ctx.textAlign = "center"
+                              ctx.fillStyle = dataset.borderColor
+
+                              ctx.fillText(
+                                  `${lost} (${value.toFixed(3)}%)`,
+                                  point.x,
+                                  point.y + 12
+                              )
+                          }
+                      }
+
+                      if (chart.canvas.id === "lossCumChart") {
+                          if (!dataset.label.includes("목표")) {
+
+                              ctx.font = "10px sans-serif"
+                              ctx.textAlign = "center"
+                              ctx.fillStyle = dataset.borderColor
+                              ctx.fillText(
+                                  value.toFixed(3) + "%",
+                                  point.x,
+                                  point.y + 10
+                              )
+                          }
+                      }
+
+                      const minutes = Math.floor(value)
+                      const seconds = Math.round((value - minutes) * 60)
+                      const timeLabel = `${minutes}:${String(seconds).padStart(2,'0')}`
+
+                      if (chart.canvas.id === "cxPerformanceChart") {
+                          if (dataset.label === "3Q" && dataset.type === "bar") {
+                              ctx.fillStyle = "#ffffff"
+                              ctx.font = "bold 11px sans-serif"
+                              ctx.fillText(timeLabel, point.x, point.y + point.height / 2)
+                          }
+
+                          if (dataset.label === "달성률") {
+                              ctx.font = "bold 10px sans-serif"
+                              ctx.textAlign = "center"
+                              ctx.lineWidth = 3
+                              ctx.strokeStyle = "#ffffff"
+                              const labelY = dashboardLabelY(chart, point.y, index % 2 ? 13 : 25)
+                              ctx.strokeText(value + "%", point.x, labelY)
+                              ctx.fillStyle = "#059669"
+                              ctx.fillText(value + "%", point.x, labelY)
+                          }
+                      }
+
+                      if (chart.canvas.id === "cxDistributionChart") {
+                          const minutes = Math.floor(value)
+                          const seconds = Math.round((value - minutes) * 60)
+                          const timeLabel = `${minutes}:${String(seconds).padStart(2,'0')}`
+
+                          if (dataset.label === "Max") {
+                              ctx.textAlign = "center"
+                              ctx.font = "bold 11px sans-serif"
+                              ctx.fillStyle = "#156082"
+                              ctx.fillText(timeLabel, point.x, point.y + point.height / 2)
+                          }
+
+                          if (dataset.label === "Median") {
+                              ctx.textAlign = "center"
+                              ctx.font = "bold 10px sans-serif"
+                              ctx.fillStyle = dataset.borderColor
+                              ctx.fillText(timeLabel, point.x, point.y + (index % 2 ? 23 : 12))
+                          }
+
+                          if (dataset.label === "3Q") {
+                              ctx.textAlign = "center"
+                              ctx.font = "bold 10px sans-serif"
+                              ctx.fillStyle = dataset.borderColor
+                              ctx.fillText(timeLabel, point.x, dashboardLabelY(chart, point.y, index % 2 ? 16 : 29))
+                          }
+                      }
+                  })
+              })
+          }
+      }
+
+      const commonBarOption = {
+          responsive: true,
+          maintainAspectRatio: false,
+
+          layout: {
+              padding: {
+                  top: 34,
+                  right: 24,
+                  bottom: 6,
+                  left: 8
+              }
+          },
+
+          plugins: {
+              legend: {
+                  position: "bottom"
+              }
+          },
+
+          scales: {
+              x: {
+                  grid: {
+                      display: false
+                  }
+              },
+
+              y: {
+                  beginAtZero: true,
+                  ticks: {
+                      display: false
+                  },
+                  border: {
+                      display: false
+                  },
+                  grid: {
+                      color: "rgba(203,213,225,0.35)"
+                  }
+              },
+
+              y1: {
+                  position: "right",
+                  ticks: {
+                      display: false
+                  },
+                  grid: {
+                      drawOnChartArea: false
+                  },
+                  border: {
+                      display: false
+                  }
+              }
+          }
+      }
+
+      const normalizedProduct = (product || "")
+          .replace(/_/g, " ")
+          .trim()
+          .toUpperCase();
+
+      let targetTime;
+
+      if (normalizedProduct === "CART BP PRO") {
+          targetTime = 8;
+      } else if (normalizedProduct === "CART BP") {
+          targetTime = 60;
+      } else {
+          targetTime = 60;
+      }
+
+      new Chart(document.getElementById("cxPerformanceChart"), {
+          type: "bar",
+          data: {
+              labels: cxWeeks,
+
+              datasets: [{
+                  type: "bar",
+                  label: "3Q",
+                  data: cx3q,
+                  backgroundColor: (ctx) => {
+                      const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200)
+                      g.addColorStop(0, "#3b82f6")
+                      g.addColorStop(1, "#1d4ed8")
+                      return g
+                  },
+                  borderRadius: 5,
+                  categoryPercentage: 0.84,
+                  barPercentage: 0.92
+              }, {
+                  type: "line",
+                  label: "달성률",
+                  data: slaRate,
+                  borderColor: "#059669",
+                  borderDash: [6, 6],
+                  pointRadius: 3,
+                  tension: 0.3,
+                  spanGaps: false,
+                  yAxisID: "y1"
+              }, {
+                  type: "line",
+                  label: `목표 시간:${targetTime}분`,
+                  data: cxWeeks.map(() => targetTime),
+                  borderColor: "#f97316",
+                  borderDash: [6, 6],
+                  borderWidth: 1,
+                  pointRadius: 0,
+                  yAxisID: "y"
+              }]
+          },
+
+          options: {
+              ...commonBarOption,
+
+              scales: {
+                  ...commonBarOption.scales,
+
+                  y1: {
+                      position: "right",
+                      min: -2,
+                      max: 102,
+                      ticks: {
+                          display: false
+                      },
+                      grid: {
+                          display: false
+                      },
+                      border: {
+                          display: false
+                      }
+                  }
+              }
+          },
+          plugins: [chartLabelPlugin]
+      })
+
+      new Chart(document.getElementById("cxDistributionChart"), {
+          type: "line",
+          data: {
+              labels: cxWeeks,
+
+              datasets: [{
+                  type: "bar",
+                  label: "Max",
+                  data: maxTime,
+                  backgroundColor: "rgba(156,163,175,0.75)",
+                  borderRadius: 4,
+                  categoryPercentage: 0.8,
+                  barPercentage: 0.86,
+                  yAxisID: "y"
+              }, {
+                  type: "line",
+                  label: "Median",
+                  data: medianTime,
+                  borderColor: "#7c3aed",
+                  borderWidth: 2,
+                  pointRadius: 3,
+                  pointBackgroundColor: "#7c3aed",
+                  tension: 0.3,
+                  fill: false,
+                  yAxisID: "y1"
+              }, {
+                  type: "line",
+                  label: "3Q",
+                  data: q3Time,
+                  borderColor: "#0369a1",
+                  backgroundColor: "rgba(147,197,253,0.35)",
+                  borderWidth: 2,
+                  pointRadius: 0,
+                  tension: 0.35,
+                  fill: true,
+                  yAxisID: "y1"
+              }]
+          },
+
+          options: {
+              ...commonBarOption,
+
+              scales: {
+                  x: {
+                      grid: {
+                          display: false
+                      }
+                  },
+
+                  y: {
+                      beginAtZero: true,
+                      ticks: {
+                          display: false
+                      },
+                      border: {
+                          display: false
+                      },
+                      grid: {
+                          color: "rgba(203,213,225,0.35)"
+                      }
+                  },
+
+                  y1: {
+                      position: "right",
+                      beginAtZero: true,
+                      ticks: {
+                          display: false
+                      },
+                      grid: {
+                          drawOnChartArea: false
+                      },
+                      border: {
+                          display: false
+                      }
+                  }
+              }
+          },
+          plugins: [chartLabelPlugin]
+      })
+
+      const ctx = document.getElementById("uptimeChart").getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, "rgba(59,130,246,0.25)");
+      gradient.addColorStop(1, "rgba(59,130,246,0.02)");
+
+      new Chart(ctx, {
+          type: "line",
+          data: {
+              labels: uptimeWeeks,
+
+              datasets: [{
+                      label: "누적 무중단 운영",
+                      data: cumulativeUptime,
+                      borderColor: "#3b82f6",
+                      backgroundColor: gradient,
+                      borderWidth: 2,
+                      pointRadius: 0,
+                      pointHoverRadius: 0,
+                      tension: 0.35,
+                      fill: true,
+                      order: 0
+                  },
+
+                  {
+                      label: "주별 무중단 운영",
+                      data: weeklyUptime,
+                      borderColor: "#0f766e",
+                      borderWidth: 2.3,
+                      pointRadius: 2.5,
+                      pointHoverRadius: 4,
+                      pointBackgroundColor: weeklyUptime.map(v => v < 99.99 ? "#ef4444" : "#0f766e"),
+                      pointBorderColor: weeklyUptime.map(v => v < 99.99 ? "#ef4444" : "#0f766e"),
+                      tension: 0.3,
+                      fill: false,
+                      order: 1
+                  },
+
+                  {
+                      label: "목표선 99.99%",
+                      data: uptimeWeeks.map(() => 99.99),
+                      borderColor: "#9ca3af",
+                      borderDash: [6, 5],
+                      borderWidth: 1.3,
+                      pointRadius: 0,
+                      fill: false,
+                      order: 2
+                  }
+              ]
+          },
+
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: {
+                  padding: {
+                      top: 30,
+                      right: 50
+                  }
+              },
+
+              plugins: {
+                  legend: {
+                      position: "bottom",
+                      labels: {
+                          padding: 15
+                      }
+                  }
+              },
+
+              scales: {
+                  x: {
+                      grid: {
+                          display: false
+                      }
+                  },
+
+                  y: {
+                      min: Math.floor(minUptime * 10) / 10 - 0.1,
+                      max: 100.02,
+                      ticks: {
+                          display: false,
+                          stepSize: 0.25
+                      },
+                      border: {
+                          display: false
+                      },
+                      grid: {
+                          color: "rgba(203,213,225,0.35)"
+                      }
+                  }
+              }
+          },
+          plugins: [chartLabelPlugin, dashboardUptimeLabelPlugin]
+      })
+  </script>
+{% endblock %}

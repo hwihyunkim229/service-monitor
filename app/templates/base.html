@@ -1,0 +1,627 @@
+{% set path = request.url.path %}
+{% set active_product = product_code or product or 'cart_bp_pro' %}
+{% set operating_products = request.app.state.product_catalog() %}
+{% set selected_product = namespace(name=active_product) %}
+{% for item in operating_products %}
+  {% if item.code == active_product %}
+    {% set selected_product.name = item.name %}
+  {% endif %}
+{% endfor %}
+{% set path_parts = path.strip('/').split('/') %}
+{% set current_section = path_parts[1] if path_parts|length > 1 else 'dashboard' %}
+{% set switch_section = current_section if current_section in ['dashboard', 'cx', 'exchange', 'quality', 'lab', 'result'] else 'dashboard' %}
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{ title or 'CART Service Cloud' }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    {% if '/dashboard' in path %}
+      <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    {% endif %}
+    <link rel="stylesheet" href="/static/style.css?v=20260917-2">
+    <link rel="stylesheet" href="/static/spreadsheet.css?v=20260916-3">
+    {% if '/dashboard' in path %}
+      <link rel="stylesheet" href="/static/dashboard.css?v=20260826-6">
+    {% endif %}
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" id="sidebar">
+        <button class="sidebar-collapse-toggle"
+                id="sidebarCollapseToggle"
+                type="button"
+                aria-label="사이드바 접기"
+                aria-expanded="true"
+                title="사이드바 접기">
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m12 5-5 5 5 5" />
+          </svg>
+        </button>
+        <a class="brand" href="/{{ active_product }}/dashboard">
+          <span class="brand-symbol">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 7.5A3.5 3.5 0 0 1 8.5 4h7A3.5 3.5 0 0 1 19 7.5v9a3.5 3.5 0 0 1-3.5 3.5h-7A3.5 3.5 0 0 1 5 16.5z" />
+              <path d="M8.5 9h7M8.5 13h4" />
+            </svg>
+          </span>
+          <span>
+            <strong>CART Service</strong>
+            <small>Operations Cloud</small>
+          </span>
+        </a>
+        <div class="workspace-label">WORKSPACE</div>
+        <div class="product-dropdown"
+             id="productDropdown"
+             data-section="{{ switch_section }}"
+             data-page="{{ page|default(1) }}">
+          <button class="product-dropdown__trigger"
+                  id="productDropdownTrigger"
+                  type="button"
+                  aria-haspopup="listbox"
+                  aria-expanded="false">
+            <i aria-hidden="true">
+            </i>
+            <span>
+              <small>운영 제품</small>
+              <strong>{{ selected_product.name }}</strong>
+            </span>
+            <svg viewBox="0 0 20 20" aria-hidden="true">
+              <path d="m6 8 4 4 4-4" />
+            </svg>
+          </button>
+          <div class="product-dropdown__menu"
+               id="productDropdownMenu"
+               role="listbox"
+               aria-label="운영 제품 선택">
+            {% for item in operating_products %}
+              <button type="button"
+                      role="option"
+                      data-product="{{ item.code }}"
+                      data-profile="{{ item.profile }}"
+                      data-jira="{{ item.jira_project or '' }}"
+                      aria-selected="{{ 'true' if active_product == item.code else 'false' }}"
+                      class="{% if active_product == item.code %}active{% endif %}">
+                <span class="product-dropdown__dot" aria-hidden="true"></span>
+                <span class="product-dropdown__copy">
+                  <strong>{{ item.name }}</strong>
+                  <small>{{ 'BP 업무 양식' if item.profile == 'bp' else 'Pro 업무 양식' }}</small>
+                </span>
+                <svg class="product-dropdown__check"
+                     viewBox="0 0 20 20"
+                     aria-hidden="true">
+                  <path d="m5 10 3 3 7-7" />
+                </svg>
+              </button>
+            {% endfor %}
+            {% if request.session.get('role') == 'admin' %}
+              <a class="product-dropdown__manage" href="/admin#products">+ 운영 제품 추가·관리</a>
+            {% endif %}
+          </div>
+        </div>
+        <div class="workspace-label">OVERVIEW</div>
+        <nav class="primary-nav overview-nav" aria-label="대시보드 메뉴">
+          <a href="/{{ active_product }}/dashboard"
+             title="운영 대시보드"
+             class="{% if '/dashboard' in path %}active{% endif %}">
+            <span class="nav-step">D</span>
+            <span class="nav-copy">
+              <strong>운영 대시보드</strong>
+              <small>핵심 지표와 품질 현황</small>
+            </span>
+            <svg class="nav-arrow" viewBox="0 0 20 20">
+              <path d="m8 5 5 5-5 5" />
+            </svg>
+          </a>
+        </nav>
+        <div class="workspace-label">CASE WORKFLOW</div>
+        <nav class="primary-nav" aria-label="업무 메뉴">
+          {% set nav = [('cx', 'CX 분석', 'analysis'), ('exchange', '교품/회수 관리', 'exchange'), ('quality', '품질 분석', 'quality'), ('lab', '연구소 분석', 'lab'), ('result', '최종 결과', 'result')] %}
+          {% for route,label,icon in nav %}
+            <a href="/{{ active_product }}/{{ route }}"
+               title="{{ label }}"
+               class="{% if '/'~route in path %}active{% endif %}">
+              <span class="nav-step">{{ loop.index }}</span>
+              <span class="nav-copy">
+                <strong>{{ label }}</strong>
+                <small>{{ ['접수 및 원인 분석','물류 진행 관리','회수품 품질 검사','R&D 정밀 분석','종합 결과 확인'][loop.index0] }}</small>
+              </span>
+              <svg class="nav-arrow" viewBox="0 0 20 20">
+                <path d="m8 5 5 5-5 5" />
+              </svg>
+            </a>
+          {% endfor %}
+        </nav>
+        <div class="sidebar-bottom">
+          {% if request.session.get('role')=='admin' %}
+            <a class="admin-link" href="/admin">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.1A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1H3v-4h1a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6V3h4v1a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.1.4.3.7.6 1h1v4h-1c-.3.3-.5.6-.6 1Z" />
+              </svg>관리자 설정</a>
+          {% endif %}
+          <div class="user-card">
+            <span class="avatar">{{ (request.session.get("user") or 'U')[0]|upper}}</span>
+            <span>
+              <strong>{{ request.session.get("user") or '사용자' }}</strong>
+              <small>{{ {'service_ops':'서비스운영','quality':'품질','logistics':'물류','rnd':'연구개발','cs':'CS'}.get(request.session.get('team'),request.session.get('team') or '미지정') }} · {{ {'admin':'시스템 관리자','manager':'사용자','editor':'사용자','viewer':'뷰어','user':'사용자'}.get(request.session.get('role'),request.session.get('role') or '뷰어') }}</small>
+            </span>
+            <a href="/logout" title="로그아웃">
+              <svg viewBox="0 0 24 24">
+                <path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      </aside>
+      <main class="main-area">
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="mobile-menu" type="button" aria-label="메뉴 열기">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+            <div class="breadcrumb">
+              <span>Service Operations</span>
+              <b>/</b>
+              <strong>{% block page_name %}업무 관리{% endblock %}</strong>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <a href="/device-search" class="command-search">
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-4-4" />
+              </svg>
+              <span>S/N 또는 식별코드 검색</span>
+              <kbd>⌘ K</kbd>
+            </a>
+            <span class="live-status">
+              <i>
+              </i>운영 중</span>
+            </div>
+          </header>
+          <section class="page-content">
+            {% block content %}{% endblock %}
+          </section>
+        </main>
+      </div>
+      <div id="toast" class="toast" role="status"></div>
+      <div id="appDialog" class="modal-backdrop">
+        <div class="modal compact-modal">
+          <span class="modal-kicker">SERVICE CLOUD</span>
+          <h2 id="dialogTitle">안내</h2>
+          <p id="dialogMessage"></p>
+          <div class="modal-actions">
+            <button class="secondary" id="dialogCancel">취소</button>
+            <button id="dialogConfirm">확인</button>
+          </div>
+        </div>
+      </div>
+      <div id="flowDialog" class="modal-backdrop">
+        <div class="modal flow-modal">
+          <span class="modal-kicker">CASE JOURNEY</span>
+          <h2>업무 흐름</h2>
+          <p id="flowCode"></p>
+          <div id="flowLinks" class="flow-links"></div>
+          <div class="modal-actions">
+            <button class="secondary" id="flowClose">닫기</button>
+          </div>
+        </div>
+      </div>
+      <script>
+          const toast = document.getElementById('toast');
+          let toastTimer;
+          window.showToast = (text, type = 'success') => {
+              clearTimeout(toastTimer);
+              toast.textContent = text;
+              toast.className = `toast show ${type}`;
+              toastTimer = setTimeout(() => toast.className = 'toast', 2200)
+          };
+          document.querySelector('.mobile-menu')?.addEventListener('click', () => document.body.classList.toggle('nav-open'));
+          const sidebarCollapseToggle = document.getElementById('sidebarCollapseToggle');
+          const setSidebarCollapsed = collapsed => {
+              document.body.classList.toggle('sidebar-collapsed', collapsed);
+              sidebarCollapseToggle?.setAttribute('aria-expanded', String(!collapsed));
+              sidebarCollapseToggle?.setAttribute('aria-label', collapsed ? '사이드바 펼치기' : '사이드바 접기');
+              if (sidebarCollapseToggle) sidebarCollapseToggle.title = collapsed ? '사이드바 펼치기' : '사이드바 접기';
+          };
+          try {
+              setSidebarCollapsed(localStorage.getItem('serviceMonitorSidebarCollapsed') === '1');
+          } catch (_error) {
+              setSidebarCollapsed(false);
+          }
+          sidebarCollapseToggle?.addEventListener('click', () => {
+              const collapsed = !document.body.classList.contains('sidebar-collapsed');
+              setSidebarCollapsed(collapsed);
+              try {
+                  localStorage.setItem('serviceMonitorSidebarCollapsed', collapsed ? '1' : '0');
+              } catch (_error) {}
+          });
+          const productDropdown = document.getElementById('productDropdown');
+          const productDropdownTrigger = document.getElementById('productDropdownTrigger');
+          const productDropdownMenu = document.getElementById('productDropdownMenu');
+          const closeProductDropdown = () => {
+              productDropdown?.classList.remove('open');
+              productDropdownTrigger?.setAttribute('aria-expanded', 'false');
+          };
+          productDropdownTrigger?.addEventListener('click', event => {
+              event.stopPropagation();
+              const willOpen = !productDropdown.classList.contains('open');
+              productDropdown.classList.toggle('open', willOpen);
+              productDropdownTrigger.setAttribute('aria-expanded', String(willOpen));
+          });
+          productDropdownMenu?.addEventListener('click', event => {
+              const option = event.target.closest('[data-product]');
+              if (!option) return;
+              const section = productDropdown.dataset.section || 'dashboard';
+              const product = option.dataset.product;
+              let page = Number(productDropdown.dataset.page || 1);
+              if (section === 'dashboard' && page === 3 && option.dataset.profile !== 'pro') page = 1;
+              if (section === 'dashboard' && page === 4 && !option.dataset.jira) page = 1;
+              location.href = `/${product}/${section}${section === 'dashboard' ? `?page=${page}` : ''}`;
+          });
+          document.addEventListener('click', event => {
+              if (!productDropdown?.contains(event.target)) closeProductDropdown();
+          });
+          document.addEventListener('keydown', event => {
+              if (event.key === 'Escape') closeProductDropdown();
+          });
+          document.addEventListener('keydown', e => {
+              if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                  e.preventDefault();
+                  location.href = '/device-search'
+              }
+          });
+          window.showAppDialog = (message, options = {}) => new Promise(resolve => {
+              const modal = document.getElementById('appDialog'),
+                  confirm = document.getElementById('dialogConfirm'),
+                  cancel = document.getElementById('dialogCancel');
+              document.getElementById('dialogTitle').textContent = options.title || '안내';
+              document.getElementById('dialogMessage').textContent = message;
+              cancel.hidden = !options.confirm;
+              modal.classList.add('open');
+              const close = value => {
+                  modal.classList.remove('open');
+                  confirm.onclick = cancel.onclick = null;
+                  resolve(value)
+              };
+              confirm.onclick = () => close(true);
+              cancel.onclick = () => close(false)
+          });
+          const workflowSteps = [
+              ['cx', 'CX 분석'],
+              ['exchange', '교품/회수 관리'],
+              ['quality', '품질 분석'],
+              ['lab', '연구소 분석'],
+              ['result', '최종 결과']
+          ];
+          window.openWorkflowDialog = trigger => {
+              const code = (trigger?.dataset.workflowTransfer || '').trim();
+              if (!code) {
+                  showAppDialog('식별코드를 먼저 입력해 주세요.');
+                  return
+              }
+              document.querySelectorAll('tr.case-active').forEach(row => row.classList.remove('case-active'));
+              const row = trigger.closest('tr');
+              row?.classList.add('case-active');
+              const p = trigger.dataset.product || 'cart_bp_pro';
+              const cells = row ? [...row.cells].map(x => x.innerText.trim()).filter(Boolean).slice(1, 7) : [];
+              document.getElementById('flowCode').innerHTML = `<strong>${code}</strong>${cells.length?`<br><span class="flow-context">선택 행 · ${cells.join(' · ')}</span>`:''}`;
+              document.getElementById('flowLinks').innerHTML = workflowSteps.map(([route, label], i) => `<a href="/${p}/${route}?keyword=${encodeURIComponent(code)}"><span>${i+1}</span><strong>${label}</strong><small>${i===0?'접수 및 분석':'진행 상태 확인'}</small></a>`).join('');
+              document.getElementById('flowDialog').classList.add('open')
+          };
+          document.addEventListener('click', e => {
+              const trigger = e.target.closest('[data-workflow-transfer]');
+              if (!trigger) return;
+              e.preventDefault();
+              window.openWorkflowDialog(trigger)
+          }, true);
+          document.getElementById('flowClose').onclick = () => document.getElementById('flowDialog').classList.remove('open');
+          document.addEventListener('DOMContentLoaded', () => {
+              const parts = location.pathname.split('/').filter(Boolean),
+                  product = parts[0],
+                  section = parts[1],
+                  sections = ['cx', 'exchange', 'quality', 'lab', 'result'];
+              if (!sections.includes(section)) return;
+              const head = document.querySelector('.page-head'),
+                  actions = head?.querySelector('.actions') || (() => {
+                      const x = document.createElement('div');
+                      x.className = 'actions';
+                      head?.appendChild(x);
+                      return x
+                  })();
+              if (actions) {
+                  const file = document.createElement('input');
+                  file.type = 'file';
+                  file.accept = '.xlsx,.xlsm';
+                  file.hidden = true;
+                  file.id = 'pageExcelUpload';
+                  actions.prepend(file);
+                  const upload = document.createElement('button');
+                  upload.type = 'button';
+                  upload.className = 'secondary';
+                  upload.textContent = 'Excel 업로드';
+                  upload.title = '현재 페이지에서 다운로드한 Excel 형식을 사용하세요.';
+                  upload.onclick = async () => {
+                      const guides = {
+                          cx: "CX 분석에서 다운로드한 Excel 형식을 사용해 주세요. 일자는 yyyy-mm-dd 형식이며 첫 행의 열 이름과 '식별코드' 열은 변경하면 안 됩니다. 월·주·처리시간은 자동 계산되고, 접수·처리는 CX가 O인 행만 반영됩니다.",
+                          exchange: "교품/회수 페이지에서 다운로드한 Excel 형식을 사용해 주세요. 기존 식별코드만 수정되며 월·주·리드타임은 자동 계산됩니다.",
+                          quality: "품질 분석에서 다운로드한 Excel 형식을 사용해 주세요. 기존 식별코드가 필요하며 셀 메모는 Excel 코멘트로 함께 반영됩니다.",
+                          lab: "연구소 분석에서 다운로드한 Excel 형식을 사용해 주세요. 기존 CX·품질 데이터가 필요하며 첨부 파일은 웹 화면에서 별도로 등록해야 합니다."
+                      };
+                      const confirmed = await showAppDialog(guides[section], {
+                          title: 'Excel 업로드 형식 확인',
+                          confirm: true
+                      });
+                      if (confirmed) file.click()
+                  };
+                  const download = document.createElement('a');
+                  download.className = 'button secondary';
+                  download.href = `/${product}/${section}/excel-download${location.search}`;
+                  download.textContent = 'Excel 다운로드';
+                  download.onclick = () => {
+                      download.href = `/${product}/${section}/excel-download${location.search}`
+                  };
+                  const filter = document.createElement('button');
+                  filter.type = 'button';
+                  filter.className = 'secondary';
+                  filter.textContent = '컬럼 필터';
+                  actions.prepend(download);
+                  if (section !== 'result') actions.prepend(upload);
+                  actions.prepend(filter);
+                  file.onchange = async () => {
+                      if (!file.files[0]) return;
+                      const fd = new FormData();
+                      fd.append('file', file.files[0]);
+                      const r = await fetch(`/${product}/${section}/excel-upload`, {
+                          method: 'POST',
+                          body: fd
+                      });
+                      const d = await r.json();
+                      const summary = `${d.updated || 0}건 반영${d.skipped ? ` · 빈 식별코드 ${d.skipped}건 제외` : ''}${d.errors?.length ? ` · 오류 ${d.errors.length}건` : ''}`;
+                      showToast(r.ok ? summary : d.detail || '업로드 실패', r.ok && !d.errors?.length ? 'success' : 'error');
+                      if (r.ok && d.errors?.length) await showAppDialog(d.errors.join('\n'), {
+                          title: 'Excel 업로드 확인'
+                      });
+                      if (r.ok) setTimeout(() => location.reload(), 700)
+                  };
+                  filter.onclick = () => {
+                      const table = document.querySelector('.data-card table');
+                      if (!table) return;
+                      const params = new URLSearchParams(location.search);
+                      const syncFilterLocation = nextParams => {
+                          const query = nextParams.toString();
+                          history.replaceState(null, '', `${location.pathname}${query ? `?${query}` : ''}`);
+                          download.href = `/${product}/${section}/excel-download${location.search}`;
+                          document.querySelectorAll('.footer-row a,.sort-toggle a').forEach(link => {
+                              const target = new URL(link.href, location.href);
+                              [...target.searchParams.keys()].forEach(key => {
+                                  if (key.startsWith('cf_')) target.searchParams.delete(key)
+                              });
+                              [...nextParams.entries()].forEach(([key, value]) => {
+                                  if (key.startsWith('cf_')) target.searchParams.append(key, value)
+                              });
+                              link.href = target.href
+                          })
+                      };
+                      let row = table.querySelector('thead .column-filter-row');
+                      if (row) {
+                          row.remove();
+                          [...params.keys()].forEach(key => {
+                              if (key.startsWith('cf_')) params.delete(key)
+                          });
+                          if (section === 'cx' && params.has('week')) {
+                              params.delete('week');
+                              params.set('page', '1');
+                              location.search = params.toString();
+                              return
+                          }
+                          syncFilterLocation(params);
+                          table.querySelectorAll('tbody tr').forEach(x => x.hidden = false);
+                          return
+                      }
+                      const headerCells = [...table.querySelectorAll('thead tr:first-child th')];
+                      const stableColumnWidths = headerCells.map(th => th.offsetWidth);
+                      row = document.createElement('tr');
+                      row.className = 'column-filter-row';
+                      const applyClientFilters = () => {
+                          const filters = [...row.querySelectorAll('input:not(:disabled),select:not(:disabled)')];
+                          table.querySelectorAll('tbody tr').forEach(tr => {
+                              tr.hidden = filters.some(filterInput => {
+                                  if (!filterInput.value) return false;
+                                  const cell = tr.cells[Number(filterInput.dataset.column)];
+                                  const control = cell?.querySelector('input,select,textarea');
+                                  const value = control?.matches('select') ?
+                                      control.selectedOptions?.[0]?.textContent || control.value :
+                                      control?.value || cell?.innerText || '';
+                                  const actual = value.trim().toLowerCase();
+                                  if (filterInput.matches('select')) {
+                                      const expectedValues = [...filterInput.selectedOptions]
+                                          .map(option => option.value.trim().toLowerCase()).filter(Boolean);
+                                      if (!expectedValues.length) return false;
+                                      return !expectedValues.some(expected => ['__blank__', '빈칸', '빈칸만', '∅'].includes(expected) ? actual === '' : actual === expected)
+                                  }
+                                  const expected = filterInput.value.trim().toLowerCase();
+                                  if (['__blank__', '빈칸', '빈칸만', '∅'].includes(expected)) return actual !== '';
+                                  return !actual.includes(expected)
+                              })
+                          });
+                          document.dispatchEvent(new CustomEvent('spreadsheet:filter-changed'))
+                      };
+                      [...table.querySelectorAll('thead tr:first-child th')].forEach((th, index) => {
+                          const cell = document.createElement('th');
+                          const stableWidth = stableColumnWidths[index];
+                          if (stableWidth) {
+                              cell.style.width = `${stableWidth}px`;
+                              cell.style.minWidth = `${stableWidth}px`;
+                              cell.style.maxWidth = `${stableWidth}px`
+                          }
+                          const header = th.innerText.trim(),
+                              serverFilterKey = section === 'cx' && header === '주' ? 'week' : '',
+                              clientFilterKey = header && !['흐름', '긴급'].includes(header) ? `cf_${header}` : '';
+                          const sourceSelects = [...table.querySelectorAll('tbody tr')]
+                              .map(tr => tr.cells[index]?.querySelector('select'))
+                              .filter(Boolean);
+                          const useDropdown = Boolean(clientFilterKey && sourceSelects.length);
+                          const input = document.createElement(useDropdown ? 'select' : 'input');
+                          input.dataset.column = index;
+                          input.dataset.filterHeader = header;
+                          if (useDropdown) {
+                              input.className = 'column-filter-select';
+                              input.multiple = true;
+                              input.size = 1;
+
+                              const selectedValues = [...new Set(sourceSelects.map(select => {
+                                  const selected = select.selectedOptions?.[0];
+                                  return (selected?.textContent || select.value || '').trim()
+                              }).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+                              const currentValues = params.getAll(clientFilterKey).filter(Boolean);
+                              currentValues.filter(value => value !== '__blank__' && !selectedValues.includes(value))
+                                  .forEach(value => selectedValues.unshift(value));
+                              input.appendChild(new Option(`${header} · 전체`, ''));
+                              input.appendChild(new Option(`${header} · 빈칸만`, '__blank__'));
+                              selectedValues.forEach(value => input.appendChild(new Option(value, value)));
+                              [...input.options].forEach(option => option.selected = currentValues.includes(option.value));
+                              if (!currentValues.length) input.options[0].selected = true;
+                              input.title = `${header} 값 선택`
+                          } else input.placeholder = `${header} · 빈칸`;
+                          if (serverFilterKey) {
+                              input.value = params.get(serverFilterKey) || '';
+                              input.inputMode = 'numeric';
+                              input.pattern = '[0-9]*';
+                              input.title = '1~53 사이의 주차를 입력하세요.'
+                          } else if (clientFilterKey) {
+                              const currentValue = params.get(clientFilterKey) || '';
+                              if (!useDropdown) input.value = currentValue === '__blank__' ? '빈칸' : currentValue;
+                              input.dataset.filterKey = clientFilterKey
+                          } else {
+                              input.disabled = true;
+                              input.placeholder = ''
+                          }
+                          const updateFilter = () => {
+                              if (serverFilterKey) {
+                                  input.value = input.value.replace(/\D/g, '').slice(0, 2);
+                                  const nextParams = new URLSearchParams(location.search);
+                                  if (input.value) nextParams.set(serverFilterKey, input.value);
+                                  else nextParams.delete(serverFilterKey);
+                                  nextParams.set('page', '1');
+                                  location.search = nextParams.toString();
+                                  return
+                              }
+                              const nextParams = new URLSearchParams(location.search);
+                              if (useDropdown) {
+                                  nextParams.delete(clientFilterKey);
+                                  [...input.selectedOptions].map(option => option.value).filter(Boolean)
+                                      .forEach(value => nextParams.append(clientFilterKey, value));
+                                  nextParams.set('page', '1');
+                                  location.search = nextParams.toString();
+                                  return
+                              }
+                              const rawFilterValue = input.value.trim();
+                              const filterValue = ['빈칸', '빈칸만', '∅', '__blank__'].includes(rawFilterValue) ? '__blank__' : rawFilterValue;
+                              if (filterValue) nextParams.set(clientFilterKey, filterValue);
+                              else nextParams.delete(clientFilterKey);
+                              nextParams.set('page', '1');
+                              location.search = nextParams.toString()
+                          };
+                          if (useDropdown) input.onchange = updateFilter;
+                          else input.onkeydown = event => {
+                              if (event.key !== 'Enter' || event.isComposing) return;
+                              event.preventDefault();
+                              updateFilter()
+                          };
+                          cell.appendChild(input);
+                          row.appendChild(cell)
+                      });
+                      table.tHead.appendChild(row);
+                      if (section === 'cx') {
+                          row.querySelectorAll('select.column-filter-select').forEach(async select => {
+                              const currentValues = [...select.selectedOptions].map(option => option.value).filter(Boolean);
+                              const header = select.dataset.filterHeader;
+                              const facetParams = new URLSearchParams(location.search);
+                              facetParams.set('header', header);
+                              facetParams.delete('page');
+                              try {
+                                  const response = await fetch(`/${product}/cx/filter-options?${facetParams.toString()}`, {
+                                      credentials: 'same-origin'
+                                  });
+                                  if (!response.ok) return;
+                                  const data = await response.json();
+                                  const values = [...new Set(data.values || [])].sort((a, b) => a.localeCompare(b, 'ko'));
+                                  select.replaceChildren(new Option(`${header} · 전체`, ''));
+                                  if (data.has_blank || currentValues.includes('__blank__')) {
+                                      select.appendChild(new Option(`${header} · 빈칸만`, '__blank__'))
+                                  }
+                                  currentValues.filter(value => value !== '__blank__' && !values.includes(value))
+                                      .forEach(value => values.unshift(value));
+                                  values.forEach(value => select.appendChild(new Option(value, value)));
+                                  [...select.options].forEach(option => option.selected = currentValues.includes(option.value));
+                                  if (!currentValues.length) select.options[0].selected = true
+                              } catch (_error) {
+                              }
+                          })
+                      }
+                      table.dispatchEvent(new CustomEvent('spreadsheet:layout-changed'));
+                      syncFilterLocation(params);
+                      applyClientFilters()
+                  };
+                  const initialParams = new URLSearchParams(location.search);
+                  if (
+                      (section === 'cx' && initialParams.has('week')) || [...initialParams.keys()].some(key => key.startsWith('cf_'))
+                  ) filter.click();
+                  const workspaceForm = document.querySelector('form.workspace-toolbar,.workspace-toolbar form');
+                  if (workspaceForm) workspaceForm.addEventListener('submit', () => {
+                      [...new URLSearchParams(location.search).entries()].forEach(([key, value]) => {
+                          if (!key.startsWith('cf_')) return;
+                          const hidden = document.createElement('input');
+                          hidden.type = 'hidden';
+                          hidden.name = key;
+                          hidden.value = value;
+                          workspaceForm.appendChild(hidden)
+                      })
+                  })
+              }
+          });
+      </script>
+      <script>
+          document.addEventListener('DOMContentLoaded', () => {
+              const footer = document.querySelector('.footer-row[data-page][data-total-pages]');
+              if (!footer) return;
+              const page = Number(footer.dataset.page) || 1,
+                  total = Math.max(1, Number(footer.dataset.totalPages) || 1);
+              if (total <= 1) return;
+              const pager = document.createElement('nav');
+              pager.className = 'quick-pager';
+              pager.setAttribute('aria-label', '빠른 페이지 이동');
+              pager.innerHTML = `<button type="button" data-go="1" title="첫 페이지">«</button><button type="button" data-go="${Math.max(1,page-1)}" title="이전 페이지">‹</button><label><input type="number" min="1" max="${total}" value="${page}" aria-label="이동할 페이지"><span>/ ${total}</span></label><button type="button" data-go="${Math.min(total,page+1)}" title="다음 페이지">›</button><button type="button" data-go="${total}" title="마지막 페이지">»</button>`;
+              const go = target => {
+                  const next = Math.max(1, Math.min(total, Number(target) || page));
+                  if (next === page) return;
+                  const params = new URLSearchParams(location.search);
+                  params.set('page', String(next));
+                  location.search = params.toString()
+              };
+              pager.querySelectorAll('[data-go]').forEach(button => {
+                  button.disabled = Number(button.dataset.go) === page;
+                  button.onclick = () => go(button.dataset.go)
+              });
+              const input = pager.querySelector('input');
+              input.onkeydown = event => {
+                  if (event.key === 'Enter') {
+                      event.preventDefault();
+                      go(input.value)
+                  }
+              };
+              input.onchange = () => go(input.value);
+              document.body.appendChild(pager)
+          });
+      </script>
+      <script src="/static/spreadsheet.js?v=20260929-2"></script>
+      <script src="/static/custom-select.js?v=20260916-1"></script>
+      {% block scripts %}{% endblock %}
+    </body>
+  </html>

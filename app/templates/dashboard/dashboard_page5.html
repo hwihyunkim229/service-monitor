@@ -1,0 +1,853 @@
+{% extends "base.html" %}
+{% block page_name %}운영 대시보드 · LOT 분석{% endblock %}
+{% block content %}
+  {% set hero_eyebrow = "LOT QUALITY" %}
+  {% set hero_title = "LOT별 불량 현황" %}
+  {% set hero_description = "LOT별 등록량과 CS·교품 발생률을 비교해 우선 관리 대상을 식별합니다." %}
+  {% set hero_badge = product|default("") %}
+  {% include "dashboard/_dashboard_hero.html" %}
+  {% set summary = namespace(cs=0, defects=0, valid=0) %}
+  {% for lot in lots %}
+    {% set summary.cs = summary.cs + (lot.cs_count or 0) %}
+    {% set summary.defects = summary.defects + (lot.defect_count or 0) %}
+    {% if lot.quantity >= 20 %}
+      {% set summary.valid = summary.valid + 1 %}
+    {% endif %}
+  {% endfor %}
+  <style>
+      .lot-dashboard {
+          --lot-navy: #17324d;
+          --lot-teal: #117589;
+          --lot-line: #dce5eb;
+          display: grid;
+          gap: 16px;
+          margin-top: 16px;
+          color: #24364b
+      }
+
+      .lot-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 14px;
+          border: 1px solid var(--lot-line);
+          border-radius: 12px;
+          background: #fff;
+          box-shadow: 0 4px 16px rgba(23, 50, 77, .04)
+      }
+
+      .lot-toolbar-copy strong {
+          display: block;
+          color: var(--lot-navy);
+          font-size: 14px
+      }
+
+      .lot-toolbar-copy span {
+          display: block;
+          margin-top: 4px;
+          color: #718096;
+          font-size: 11px
+      }
+
+      .lot-toolbar-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px
+      }
+
+      .lot-upload {
+          display: none;
+          align-items: center;
+          gap: 8px
+      }
+
+      .lot-upload.open {
+          display: flex
+      }
+
+      .lot-upload input[type=file] {
+          width: 240px;
+          min-height: 36px;
+          font-size: 11px
+      }
+
+      .lot-summary {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px
+      }
+
+      .lot-kpi {
+          position: relative;
+          min-height: 112px;
+          overflow: hidden;
+          padding: 17px 18px;
+          border: 1px solid var(--lot-line);
+          border-radius: 14px;
+          background: #fff;
+          box-shadow: 0 6px 20px rgba(23, 50, 77, .045)
+      }
+
+      .lot-kpi::after {
+          position: absolute;
+          right: -24px;
+          bottom: -36px;
+          width: 100px;
+          height: 100px;
+          border-radius: 50%;
+          background: var(--tone, #eaf5f7);
+          content: ""
+      }
+
+      .lot-kpi span {
+          position: relative;
+          z-index: 1;
+          color: #68788b;
+          font-size: 11px;
+          font-weight: 750
+      }
+
+      .lot-kpi strong {
+          position: relative;
+          z-index: 1;
+          display: block;
+          margin-top: 10px;
+          color: var(--lot-navy);
+          font-size: 29px;
+          line-height: 1;
+          font-variant-numeric: tabular-nums
+      }
+
+      .lot-kpi small {
+          position: relative;
+          z-index: 1;
+          display: block;
+          margin-top: 9px;
+          color: #8a97a7;
+          font-size: 10px
+      }
+
+      .lot-risk {
+          display: grid;
+          grid-template-columns: minmax(250px, .72fr) minmax(0, 2.28fr);
+          gap: 12px
+      }
+
+      .lot-risk-intro,
+      .lot-ranking {
+          border: 1px solid var(--lot-line);
+          border-radius: 14px;
+          background: #fff;
+          box-shadow: 0 6px 20px rgba(23, 50, 77, .045)
+      }
+
+      .lot-risk-intro {
+          padding: 20px;
+          background: linear-gradient(145deg, #17324d, #1d4b60);
+          color: #fff
+      }
+
+      .lot-risk-intro span {
+          color: #91d5df;
+          font-size: 10px;
+          font-weight: 850;
+          letter-spacing: .12em
+      }
+
+      .lot-risk-intro h2 {
+          margin: 8px 0 7px;
+          font-size: 21px
+      }
+
+      .lot-risk-intro p {
+          margin: 0;
+          color: #c7d6df;
+          font-size: 11px;
+          line-height: 1.65
+      }
+
+      .lot-risk-intro small {
+          display: block;
+          margin-top: 16px;
+          color: #91aebc;
+          font-size: 9px
+      }
+
+      .lot-ranking {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0;
+          overflow: hidden
+      }
+
+      .lot-rank {
+          position: relative;
+          min-height: 142px;
+          padding: 19px;
+          border-right: 1px solid var(--lot-line)
+      }
+
+      .lot-rank:last-child {
+          border-right: 0
+      }
+
+      .lot-rank b {
+          display: grid;
+          place-items: center;
+          width: 27px;
+          height: 27px;
+          border-radius: 8px;
+          background: #edf6f8;
+          color: var(--lot-teal);
+          font-size: 11px
+      }
+
+      .lot-rank strong {
+          display: block;
+          margin-top: 14px;
+          color: var(--lot-navy);
+          font-size: 19px;
+          overflow-wrap: anywhere
+      }
+
+      .lot-rank-rate {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+          margin-top: 7px
+      }
+
+      .lot-rank-rate em {
+          color: #d64e57;
+          font-size: 22px;
+          font-style: normal;
+          font-weight: 850
+      }
+
+      .lot-rank-rate span {
+          color: #8a97a7;
+          font-size: 10px
+      }
+
+      .lot-rank.empty {
+          display: grid;
+          place-items: center;
+          color: #98a2b3;
+          font-size: 11px
+      }
+
+      .lot-section-head {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 14px
+      }
+
+      .lot-section-head h2 {
+          margin: 0;
+          color: var(--lot-navy);
+          font-size: 18px
+      }
+
+      .lot-section-head p {
+          margin: 5px 0 0;
+          color: #718096;
+          font-size: 11px
+      }
+
+      .lot-section-head .section-chip {
+          padding: 6px 9px;
+          border-radius: 999px;
+          background: #edf6f8;
+          color: var(--lot-teal);
+          font-size: 10px;
+          font-weight: 800
+      }
+
+      .lot-charts {
+          display: grid;
+          gap: 14px
+      }
+
+      .lot-chart-card {
+          overflow: hidden;
+          border: 1px solid var(--lot-line);
+          border-radius: 15px;
+          background: #fff;
+          box-shadow: 0 8px 26px rgba(23, 50, 77, .05)
+      }
+
+      .lot-chart-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 15px 18px;
+          border-bottom: 1px solid #e7edf1
+      }
+
+      .lot-chart-title {
+          display: flex;
+          align-items: center;
+          gap: 10px
+      }
+
+      .lot-chart-title b {
+          display: grid;
+          place-items: center;
+          width: 35px;
+          height: 35px;
+          border-radius: 10px;
+          background: #eaf5f7;
+          color: var(--lot-teal);
+          font-size: 11px
+      }
+
+      .lot-chart-title strong {
+          display: block;
+          color: var(--lot-navy);
+          font-size: 14px
+      }
+
+      .lot-chart-title span {
+          display: block;
+          margin-top: 3px;
+          color: #8491a1;
+          font-size: 10px
+      }
+
+      .lot-legend {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          color: #68788b;
+          font-size: 10px;
+          font-weight: 700
+      }
+
+      .lot-legend i {
+          display: inline-block;
+          width: 9px;
+          height: 9px;
+          margin-right: 5px;
+          border-radius: 3px
+      }
+
+      .lot-chart-scroll {
+          overflow-x: auto;
+          padding: 14px 16px 10px
+      }
+
+      .lot-chart-inner {
+          height: 350px
+      }
+
+      .lot-detail-card {
+          overflow: hidden;
+          border: 1px solid var(--lot-line);
+          border-radius: 15px;
+          background: #fff;
+          box-shadow: 0 8px 26px rgba(23, 50, 77, .05)
+      }
+
+      .lot-detail-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 15px 18px
+      }
+
+      .lot-detail-head h2 {
+          margin: 0;
+          color: var(--lot-navy);
+          font-size: 16px
+      }
+
+      .lot-detail-head p {
+          margin: 4px 0 0;
+          color: #7b899a;
+          font-size: 10px
+      }
+
+      .lot-table-wrap {
+          display: none;
+          max-height: 610px;
+          overflow: auto;
+          border-top: 1px solid var(--lot-line)
+      }
+
+      .lot-table-wrap.open {
+          display: block
+      }
+
+      .lot-table {
+          width: 100%;
+          min-width: 700px;
+          border-collapse: separate;
+          border-spacing: 0;
+          font-size: 12px
+      }
+
+      .lot-table th {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          height: 43px;
+          background: #f3f7f9;
+          color: #536477;
+          font-size: 11px
+      }
+
+      .lot-table td {
+          height: 46px;
+          padding: 8px 12px;
+          color: #2f4054
+      }
+
+      .lot-table tbody tr:nth-child(even) td {
+          background: #fafcfd
+      }
+
+      .lot-table tbody tr:hover td {
+          background: #edf7f8
+      }
+
+      .lot-code {
+          color: #125f72;
+          font-weight: 850
+      }
+
+      .lot-rate-pill {
+          display: inline-flex;
+          min-width: 62px;
+          justify-content: center;
+          padding: 5px 8px;
+          border-radius: 999px;
+          background: #edf6f8;
+          color: #176b7d;
+          font-size: 11px;
+          font-weight: 800
+      }
+
+      .lot-rate-pill.risk {
+          background: #ffebed;
+          color: #b63642
+      }
+
+      .lot-rate-pill.na {
+          background: #f0f2f5;
+          color: #8995a4
+      }
+
+      .lot-sort {
+          display: inline-flex;
+          margin-left: 5px;
+          gap: 2px
+      }
+
+      .lot-sort button {
+          width: 22px;
+          min-width: 22px;
+          height: 22px;
+          min-height: 22px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #758598;
+          font-size: 9px;
+          box-shadow: none
+      }
+
+      .lot-sort button:hover {
+          background: #dfeef1;
+          color: #135f71;
+          transform: none
+      }
+
+      @media(max-width:1100px) {
+          .lot-summary {
+              grid-template-columns: repeat(2, 1fr)
+          }
+
+          .lot-risk {
+              grid-template-columns: 1fr
+          }
+
+          .lot-ranking {
+              min-height: 140px
+          }
+      }
+
+      @media(max-width:720px) {
+          .lot-summary {
+              grid-template-columns: 1fr
+          }
+
+          .lot-ranking {
+              grid-template-columns: 1fr
+          }
+
+          .lot-rank {
+              border-right: 0;
+              border-bottom: 1px solid var(--lot-line)
+          }
+
+          .lot-toolbar,
+          .lot-section-head,
+          .lot-detail-head {
+              align-items: flex-start;
+              flex-direction: column
+          }
+
+          .lot-upload.open {
+              align-items: stretch;
+              flex-direction: column
+          }
+
+          .lot-upload input[type=file] {
+              width: 100%
+          }
+
+          .lot-legend {
+              display: none
+          }
+      }
+  </style>
+  <div class="lot-dashboard">
+    <section class="lot-toolbar">
+      <div class="lot-toolbar-copy">
+        <strong>LOT 품질 데이터</strong>
+        <span>등록량 20대 이상 LOT부터 교품률을 유효 지표로 표시합니다.</span>
+      </div>
+      <div class="lot-toolbar-actions">
+        <form id="lotUpload"
+              class="lot-upload"
+              action="/lot/upload"
+              method="post"
+              enctype="multipart/form-data">
+          <input type="hidden" name="product" value="{{ product_code }}">
+          <input type="file" name="file" accept=".xlsx,.xls,.csv" required>
+          <button type="submit">가져오기</button>
+        </form>
+        <button id="lotUploadToggle" class="secondary" type="button">Excel 업로드</button>
+      </div>
+    </section>
+    <section class="lot-summary" aria-label="LOT 핵심 지표">
+      <article class="lot-kpi" style="--tone:#e8f4f7">
+        <span>총 등록량</span>
+        <strong>{{ '{:,}'.format(total_quantity or 0) }}</strong>
+        <small>전체 LOT 누적 기기</small>
+      </article>
+      <article class="lot-kpi" style="--tone:#eef1fb">
+        <span>관리 LOT</span>
+        <strong>{{ lots|length }}</strong>
+        <small>등록된 LOT 종류</small>
+      </article>
+      <article class="lot-kpi" style="--tone:#fff3e6">
+        <span>전체 CS</span>
+        <strong>{{ '{:,}'.format(summary.cs) }}</strong>
+        <small>LOT 매칭 CS 접수</small>
+      </article>
+      <article class="lot-kpi" style="--tone:#ffebed">
+        <span>전체 교품</span>
+        <strong>{{ '{:,}'.format(summary.defects) }}</strong>
+        <small>유효 표본 LOT {{ summary.valid }}개</small>
+      </article>
+    </section>
+    <section class="lot-risk">
+      <div class="lot-risk-intro">
+        <span>PRIORITY WATCH</span>
+        <h2>불량률 집중관리 LOT</h2>
+        <p>교품률이 높은 LOT를 우선 확인하고 등록량·CS 이력과 함께 원인을 점검하세요.</p>
+        <small>교품률 기준 상위 3개 LOT</small>
+      </div>
+      <div class="lot-ranking">
+        {% for lot in top_lots[:3] %}
+          <article class="lot-rank">
+            <b>#{{ loop.index }}</b>
+            <strong>{{ lot.lot }}</strong>
+            <div class="lot-rank-rate">
+              <em>{{ lot.defect_rate }}%</em>
+              <span>교품률</span>
+            </div>
+          </article>
+        {% else %}
+          <article class="lot-rank empty">집계 가능한 LOT가 없습니다.</article>
+        {% endfor %}
+      </div>
+    </section>
+    <div class="lot-section-head">
+      <div>
+        <h2>연도별 LOT 교품 추이</h2>
+        <p>막대는 교품 건수, 선은 등록량 대비 교품률을 나타냅니다.</p>
+      </div>
+      <span class="section-chip">{{ grouped_chart_lots|length }}개 연도</span>
+    </div>
+    <section class="lot-charts">
+      {% for year, chart_data in grouped_chart_lots.items() %}
+        <article class="lot-chart-card">
+          <header class="lot-chart-head">
+            <div class="lot-chart-title">
+              <b>{{ year }}</b>
+              <div>
+                <strong>{{ year }}년 LOT 품질 추이</strong>
+                <span>{{ chart_data|length }}개 LOT 비교</span>
+              </div>
+            </div>
+            <div class="lot-legend">
+              <span>
+                <i style="background:#2587a2">
+                </i>교품 건수</span>
+                <span>
+                  <i style="background:#dc5963;border-radius:50%">
+                  </i>교품률</span>
+                </div>
+              </header>
+              <div class="lot-chart-scroll">
+                <div class="lot-chart-inner"
+                     style="min-width:{{ [900, chart_data|length * 46]|max }}px">
+                  <canvas id="lotChart_{{ year }}">
+                  </canvas>
+                </div>
+              </div>
+            </article>
+      {% endfor %}
+    </section>
+    <section class="lot-detail-card">
+      <header class="lot-detail-head">
+        <div>
+          <h2>전체 LOT 상세</h2>
+          <p>등록량·CS·교품 건수와 교품률을 한 번에 비교합니다.</p>
+        </div>
+        <button id="lotTableToggle" class="secondary" type="button">상세 펼치기</button>
+      </header>
+      <div id="lotTable" class="lot-table-wrap">
+        <table class="lot-table">
+          <thead>
+            <tr>
+              <th>LOT</th>
+              <th>등록량</th>
+              <th>CS 건수</th>
+              <th>교품 건수</th>
+              <th>
+                교품률 (%)
+                <span class="lot-sort">
+                  <button type="button" data-sort="asc" title="오름차순">▲</button>
+                  <button type="button" data-sort="desc" title="내림차순">▼</button>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lot in lots %}
+              <tr>
+                <td>
+                  <span class="lot-code">{{ lot.lot }}</span>
+                </td>
+                <td>{{ lot.quantity }}</td>
+                <td>{{ lot.cs_count }}</td>
+                <td>{{ lot.defect_count }}</td>
+                <td>
+                  {% if lot.quantity < 20 %}
+                    <span class="lot-rate-pill na">표본 부족</span>
+                  {% elif lot.defect_rate > 10 %}
+                    <span class="lot-rate-pill risk">{{ lot.defect_rate }}%</span>
+                  {% else %}
+                    <span class="lot-rate-pill">{{ lot.defect_rate }}%</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/dashboard_charts.js?v=20260826-3"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+  {% for year, chart_data in grouped_chart_lots.items() %}
+    <script>
+        (() => {
+            const canvas = document.getElementById('lotChart_{{ year }}');
+            if (!canvas) return;
+            const render = () => {
+                if (canvas.dataset.rendered) return;
+                canvas.dataset.rendered = '1';
+                const labels = {{ chart_data|map(attribute='lot')|list|tojson }},
+                    counts = {{ chart_data|map(attribute='defect_count')|list|tojson }},
+                    rates = {{ chart_data|map(attribute='defect_rate')|list|tojson }};
+                new Chart(canvas, {
+                    data: {
+                        labels,
+                        datasets: [{
+                            type: 'bar',
+                            label: '교품 건수',
+                            data: counts,
+                            backgroundColor: 'rgba(31,132,158,.82)',
+                            borderColor: '#176f87',
+                            borderWidth: 1,
+                            borderRadius: 5,
+                            borderSkipped: false,
+                            categoryPercentage: .72,
+                            barPercentage: .78,
+                            maxBarThickness: 28,
+                            yAxisID: 'y'
+                        }, {
+                            type: 'line',
+                            label: '교품률',
+                            data: rates,
+                            borderColor: '#d9505b',
+                            backgroundColor: '#d9505b',
+                            borderWidth: 2.5,
+                            tension: .3,
+                            pointRadius: 3,
+                            pointHoverRadius: 5,
+                            pointBackgroundColor: '#fff',
+                            pointBorderWidth: 2,
+                            fill: false,
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        layout: {
+                            padding: {
+                                top: 10,
+                                right: 8
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(19,42,61,.94)',
+                                padding: 11,
+                                titleFont: {
+                                    size: 12,
+                                    weight: '700'
+                                },
+                                bodyFont: {
+                                    size: 11
+                                },
+                                callbacks: {
+                                    label: c => c.dataset.type === 'line' ? ` 교품률 ${c.raw}%` : ` 교품 ${c.raw}건`
+                                }
+                            },
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'x'
+                                },
+                                zoom: {
+                                    wheel: {
+                                        enabled: true
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'x'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    color: '#526579',
+                                    font: {
+                                        size: 11,
+                                        weight: '600'
+                                    },
+                                    autoSkip: false,
+                                    maxRotation: 45,
+                                    minRotation: 0
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                position: 'left',
+                                grid: {
+                                    color: 'rgba(113,135,151,.14)'
+                                },
+                                ticks: {
+                                    color: '#617488',
+                                    font: {
+                                        size: 11
+                                    },
+                                    precision: 0
+                                }
+                            },
+                            y1: {
+                                beginAtZero: true,
+                                position: 'right',
+                                grid: {
+                                    drawOnChartArea: false
+                                },
+                                ticks: {
+                                    color: '#b84a54',
+                                    font: {
+                                        size: 11,
+                                        weight: '600'
+                                    },
+                                    callback: v => `${v}%`
+                                }
+                            }
+                        }
+                    }
+                })
+            };
+            if (!('IntersectionObserver' in window)) {
+                render();
+                return
+            }
+            const observer = new IntersectionObserver(entries => {
+                if (entries.some(entry => entry.isIntersecting)) {
+                    observer.disconnect();
+                    render()
+                }
+            }, {
+                rootMargin: '320px 0px'
+            });
+            observer.observe(canvas)
+        })();
+    </script>
+  {% endfor %}
+  <script>
+      (() => {
+          const upload = document.getElementById('lotUpload'),
+              uploadToggle = document.getElementById('lotUploadToggle');
+          uploadToggle.onclick = () => {
+              const open = upload.classList.toggle('open');
+              uploadToggle.textContent = open ? '닫기' : 'Excel 업로드'
+          };
+          const table = document.getElementById('lotTable'),
+              tableToggle = document.getElementById('lotTableToggle');
+          tableToggle.onclick = () => {
+              const open = table.classList.toggle('open');
+              tableToggle.textContent = open ? '상세 접기' : '상세 펼치기'
+          };
+          document.querySelectorAll('[data-sort]').forEach(button => button.onclick = () => {
+              const body = table.querySelector('tbody'),
+                  rows = [...body.rows],
+                  direction = button.dataset.sort === 'asc' ? 1 : -1;
+              rows.sort((a, b) => {
+                  const parse = row => {
+                      const text = row.cells[4].innerText.replace('%', '').trim();
+                      return text === '표본 부족' ? -1 : Number(text) || 0
+                  };
+                  return (parse(a) - parse(b)) * direction
+              });
+              rows.forEach(row => body.appendChild(row))
+          })
+      })();
+  </script>
+{% endblock %}

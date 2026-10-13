@@ -1,0 +1,761 @@
+{% extends "base.html" %}
+{% set bp_profile = (request.app.state.product_config(product) or {}).get('profile') == 'bp' %}
+{% block content %}
+  <style>
+      .quality-data-cell {
+          position: relative;
+          min-width: 112px;
+          padding-right: 34px
+      }
+
+      .quality-value {
+          min-width: 70px;
+          min-height: 24px;
+          padding: 4px 2px;
+          outline: none;
+          white-space: normal;
+          overflow-wrap: anywhere
+      }
+
+      .memo-trigger {
+          position: absolute;
+          top: 50%;
+          right: 5px;
+          min-width: 25px;
+          min-height: 23px;
+          height: 23px;
+          padding: 0 5px;
+          border: 1px solid #d8e0e8;
+          border-radius: 6px;
+          background: #f8fafc;
+          color: #8a96a8;
+          font-size: 8px;
+          transform: translateY(-50%)
+      }
+
+      .memo-trigger:hover,
+      .memo-trigger.has-memo {
+          border-color: #d7b25d;
+          background: #fff7df;
+          color: #8a5a00;
+          transform: translateY(-50%)
+      }
+
+      #qualityMemoText {
+          min-height: 150px
+      }
+
+      .cx-context-trigger {
+          min-height: 31px;
+          height: 31px;
+          padding: 0 11px;
+          border-color: #bfdbe2;
+          background: #eef8fa;
+          color: #17677a;
+          font-size: 12px;
+          font-weight: 750
+      }
+
+      .cx-context-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 14px
+      }
+
+      .cx-context-card {
+          padding: 12px;
+          border: 1px solid var(--line);
+          border-radius: 10px;
+          background: #f8fafc
+      }
+
+      .cx-context-card.wide {
+          grid-column: 1 / -1
+      }
+
+      .cx-context-card span {
+          display: block;
+          margin-bottom: 6px;
+          color: var(--muted);
+          font-size: 12px;
+          font-weight: 700
+      }
+
+      .cx-context-card strong,
+      .cx-context-card p {
+          margin: 0;
+          color: #27364a;
+          font-size: 14px;
+          font-weight: 650;
+          line-height: 1.6;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere
+      }
+
+      .quality-transfer-date {
+          width: 112px;
+          min-width: 112px;
+          font-size: 12px;
+          font-weight: 650
+      }
+
+      .process-rev-actions {
+          position: relative
+      }
+
+      .process-rev-menu {
+          position: absolute;
+          z-index: 80;
+          top: calc(100% + 8px);
+          right: 0;
+          display: none;
+          width: 230px;
+          padding: 7px;
+          border: 1px solid #d7e2e8;
+          border-radius: 12px;
+          background: #fff;
+          box-shadow: 0 14px 35px rgba(25, 48, 66, .16)
+      }
+
+      .process-rev-menu.open {
+          display: grid;
+          gap: 4px
+      }
+
+      .process-rev-option {
+          display: grid;
+          grid-template-columns: 32px 1fr;
+          gap: 9px;
+          align-items: center;
+          width: 100%;
+          min-height: 52px;
+          padding: 7px 9px;
+          border: 0;
+          border-radius: 9px;
+          background: transparent;
+          color: #26384a;
+          text-align: left
+      }
+
+      .process-rev-option:hover {
+          background: #eef7f9;
+          color: #0f7188;
+          transform: none
+      }
+
+      .process-rev-option i {
+          display: grid;
+          place-items: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+          background: #e5f3f6;
+          color: #0f7188;
+          font-size: 15px;
+          font-style: normal;
+          font-weight: 800
+      }
+
+      .process-rev-option strong,
+      .process-rev-option small {
+          display: block
+      }
+
+      #rndTransferOpen:disabled {
+          opacity: .45;
+          cursor: not-allowed
+      }
+
+      .quality-table #qualitySelectAll,
+      .quality-table .quality-row-select {
+          width: 16px;
+          min-width: 16px;
+          max-width: 16px;
+          height: 16px;
+          min-height: 16px;
+          margin: 0 auto;
+          padding: 0;
+          border-radius: 4px;
+          accent-color: #14788e;
+          cursor: pointer;
+      }
+
+      .quality-table th:first-child,
+      .quality-table td:first-child {
+          width: 42px;
+          min-width: 42px;
+          text-align: center;
+      }
+
+      #rndTransferModal .compact-modal {
+          width: min(480px, 94vw);
+          padding: 30px
+      }
+
+      #rndTransferModal .modal-kicker {
+          margin-bottom: 9px;
+          font-size: 11px
+      }
+
+      #rndTransferModal h2 {
+          margin-bottom: 8px;
+          font-size: 23px;
+          line-height: 1.3
+      }
+
+      #rndTransferModal .modal>p {
+          margin-bottom: 20px;
+          font-size: 13px;
+          line-height: 1.55
+      }
+
+      #rndTransferModal .filter-field {
+          gap: 7px;
+          color: #344054;
+          font-size: 13px;
+          font-weight: 700
+      }
+
+      #rndTransferModal .filter-field select {
+          height: 43px;
+          padding: 0 13px;
+          font-size: 14px
+      }
+
+      #rndTransferModal .urgent-check {
+          gap: 12px;
+          margin-top: 17px;
+          padding: 15px
+      }
+
+      #rndTransferModal .urgent-check input {
+          width: 19px;
+          min-height: 19px
+      }
+
+      #rndTransferModal .urgent-check strong {
+          font-size: 14px;
+          line-height: 1.35
+      }
+
+      #rndTransferModal .urgent-check small {
+          display: block;
+          margin-top: 4px;
+          font-size: 12px;
+          line-height: 1.45
+      }
+
+      #rndTransferModal .modal-actions {
+          margin-top: 20px
+      }
+
+      #rndTransferModal .modal-actions button {
+          min-height: 40px;
+          padding: 0 15px;
+          font-size: 13px
+      }
+
+      .process-rev-option strong {
+          font-size: 13px
+      }
+
+      .process-rev-option small {
+          margin-top: 2px;
+          color: #7a8998;
+          font-size: 11px;
+          font-weight: 600
+      }
+  </style>
+  <section class="page-head">
+    <div class="page-title">
+      <span>QUALITY CONTROL</span>
+      <h1>품질 분석</h1>
+      <p>회수품 검사 결과와 연구소 이관 상태를 표준화해 관리합니다.</p>
+    </div>
+    <div class="actions">
+      <input id="processRevFile" type="file" accept=".xlsx,.xlsm" hidden>
+      <div class="process-rev-actions">
+        <button class="button secondary"
+                id="processRevActionToggle"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded="false">공정 Rev 기준 업데이트</button>
+        <div class="process-rev-menu" id="processRevMenu" role="menu">
+          <a class="process-rev-option"
+             href="/static/templates/process_rev_upload_template.xlsx"
+             download="공정 Rev 업로드 양식.xlsx"
+             role="menuitem">
+            <i>↓</i>
+            <span>
+              <strong>양식 다운로드</strong>
+              <small>LOT No.와 출고 Rev 입력 양식</small>
+            </span>
+          </a>
+          <button class="process-rev-option"
+                  id="processRevUpload"
+                  type="button"
+                  role="menuitem">
+            <i>↑</i>
+            <span>
+              <strong>기준표 업데이트</strong>
+              <small>작성한 Excel 파일 업로드</small>
+            </span>
+          </button>
+        </div>
+      </div>
+      <a class="button secondary"
+         href="/{{ product }}/exchange/transfer-history">이관 요청 관리 <span id="pendingTransferCount" class="urgent-badge" hidden></span>
+      </a>
+      <button class="button" id="rndTransferOpen" type="button" disabled>연구소 실물 이관</button>
+    </div>
+  </section>
+  <div class="metric-grid">
+    <article class="metric-card">
+      <span>분석 대상</span>
+      <strong>{{ total_count }}</strong>
+      <small>회수 완료 기준</small>
+    </article>
+    <article class="metric-card">
+      <span>페이지</span>
+      <strong>{{ page }}</strong>
+      <small>{{ total_pages or 1 }} 페이지 중</small>
+    </article>
+    <article class="metric-card">
+      <span>필터</span>
+      <strong class="metric-code">{{ keyword or '전체' }}</strong>
+      <small>통합 검색</small>
+    </article>
+  </div>
+  <div class="workspace-toolbar">
+    <form class="filters" method="get">
+      <input type="hidden" name="order" value="{{ order }}">
+      <label class="filter-field search">
+        통합 검색<input name="keyword" value="{{ keyword }}" placeholder="현재 페이지의 모든 내용 검색">
+      </label>
+      <label class="filter-field">
+        표시 개수<select name="limit">
+        <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
+        <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+        <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
+        </select>
+      </label>
+      <button type="submit">조회</button>
+      <a class="button secondary" href="/{{ product }}/quality">초기화</a>
+    </form>
+    <div class="sort-toggle">
+      <span class="sort-state">현재 {{ '내림차순' if order == 'desc' else '오름차순' }}</span>
+      <a class="button secondary"
+         href="?page=1&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ 'asc' if order == 'desc' else 'desc' }}">{{ '오름차순' if order == 'desc' else '내림차순' }}으로 정렬</a>
+      <span class="filter-field">전체 대상<strong>{{ total_count }}건</strong>
+      </span>
+    </div>
+  </div>
+  <div class="data-card">
+    <div class="table-scroll">
+      <table class="spreadsheet-enhanced quality-table {{ 'quality-bp' if bp_profile else 'quality-pro' }}"
+             data-sticky-through="CX 정보">
+        <thead>
+          <tr>
+            <th>
+              <input id="qualitySelectAll"
+                     class="row-select"
+                     type="checkbox"
+                     aria-label="현재 페이지 전체 선택">
+            </th>
+            <th>긴급</th>
+            <th>흐름</th>
+            <th>접수일</th>
+            <th>회수일</th>
+            <th>회수품 이관일</th>
+            {% if not bp_profile %}
+              <th>병원명</th>
+            {% endif %}
+            <th>식별코드</th>
+            <th>S/N</th>
+            <th>공정 Rev</th>
+            <th>HW Rev</th>
+            <th>CX 정보</th>
+            {% for field, label in quality_columns %}
+              <th>{{ label }}</th>
+            {% endfor %}
+            <th>품질 분석 완료일</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% set cs = row.cs %}
+            {% set q = row.q %}
+            {% set rnd_ready = q and q.quality_result in ['OK', 'NG'] and q.lab_transfer_date %}
+            <tr>
+              <td>
+                <input class="row-select quality-row-select"
+                       type="checkbox"
+                       value="{{ cs.serial_no or '' }}"
+                       data-transfer-no="{{ cs.transfer_no }}"
+                       aria-label="{{ cs.transfer_no }} 선택"
+                       {% if not cs.serial_no or not rnd_ready %} disabled title="품질 판정과 품질 분석 완료일을 먼저 입력하세요."{% endif %}>
+              </td>
+              <td>
+                {% if cs.transfer_no in urgent_transfer_nos %}
+                  <span class="urgent-badge">긴급</span>
+                {% endif %}
+              </td>
+              <td>
+                <button class="flow-btn"
+                        type="button"
+                        data-workflow-transfer="{{ cs.transfer_no }}"
+                        data-product="{{ product }}">보기</button>
+              </td>
+              <td>{{ (cs.received_at or cs.date_only).strftime("%Y-%m-%d") if (cs.received_at or cs.date_only) else '-' }}</td>
+              <td>{{ cs.return_at.strftime("%Y-%m-%d") if cs.return_at else '-' }}</td>
+              <td>
+                {% if q %}
+                  <input class="quality-transfer-date"
+                         type="text"
+                         inputmode="numeric"
+                         placeholder="yyyy-mm-dd"
+                         data-id="{{ q.id }}"
+                         data-field="return_transfer_date"
+                         value="{{ q.return_transfer_date.strftime('%Y-%m-%d') if q.return_transfer_date else '' }}">
+          {% else %}-{% endif %}
+            </td>
+            {% if not bp_profile %}
+              <td>{{ cs.hospital_name or '-' }}</td>
+            {% endif %}
+            <td>
+              <strong>{{ cs.transfer_no }}</strong>
+            </td>
+            <td>{{ cs.serial_no or '-' }}</td>
+            <td>{{ row.rev or '-' }}</td>
+            <td>{{ row.hw_rev or '-' }}</td>
+            <td>
+              {% set cx = row.cx %}
+              <button class="cx-context-trigger"
+                      type="button"
+                      data-transfer-no="{{ cs.transfer_no }}"
+                      data-category-main="{{ (cs.category_main or '')|e }}"
+                      data-category-sub="{{ (cs.category_sub or '')|e }}"
+                      data-description="{{ (cs.description or '')|e }}"
+                      data-issue1="{{ (cx.issue1 if cx else '')|e }}"
+                      data-depth-one-one="{{ (cx.depth1_1 if cx else '')|e }}"
+                      data-depth-one-two="{{ (cx.depth1_2 if cx else '')|e }}"
+                      data-issue2="{{ (cx.issue2 if cx else '')|e }}"
+                      data-depth-two-one="{{ (cx.depth2_1 if cx else '')|e }}"
+                      data-depth-two-two="{{ (cx.depth2_2 if cx else '')|e }}">보기</button>
+            </td>
+            {% for f, label in quality_columns %}
+              {% set memo = memo_map.get((q.id, f), '') if q else '' %}
+              <td class="quality-data-cell">
+                {% if q %}
+                  <div class="quality-value"
+                       contenteditable="true"
+                       data-id="{{ q.id }}"
+                       data-field="{{ f }}"
+                       {% if f == 'quality_result' %} hidden{% endif %}>{{ q|attr(f) or '' }}</div>
+                  {% if f == 'quality_result' %}
+                    <select class="quality-result-select"
+                            data-id="{{ q.id }}"
+                            data-field="quality_result">
+                      <option value="대기"
+                              {% if (q.quality_result or '대기') not in ['OK','NG'] %}selected{% endif %}>대기</option>
+                      <option value="OK" {% if q.quality_result == 'OK' %}selected{% endif %}>OK</option>
+                      <option value="NG" {% if q.quality_result == 'NG' %}selected{% endif %}>NG</option>
+                    </select>
+                  {% endif %}
+                  <button class="memo-trigger{% if memo %} has-memo{% endif %}"
+                          type="button"
+                          data-quality-id="{{ q.id }}"
+                          data-field-name="{{ f }}"
+                          data-field-label="{{ field_labels.get(f, f) }}"
+                          data-transfer-no="{{ cs.transfer_no }}"
+                          data-memo="{{ memo|e }}"
+                          title="{{ field_labels.get(f, f) }} 메모">메모</button>
+                {% endif %}
+              </td>
+            {% endfor %}
+            <td>
+              {% if q %}
+                <input class="quality-transfer-date"
+                       type="text"
+                       inputmode="numeric"
+                       placeholder="yyyy-mm-dd"
+                       data-id="{{ q.id }}"
+                       data-field="lab_transfer_date"
+                       value="{{ q.lab_transfer_date.strftime('%Y-%m-%d') if q.lab_transfer_date else '' }}">
+          {% else %}-{% endif %}
+            </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="{{ 30 if not bp_profile else 29 }}" class="empty-state">분석할 회수품이 없습니다.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="footer-row"
+       data-page="{{ page }}"
+       data-total-pages="{{ total_pages or 1 }}">
+    <span>총 {{ total_count }}건</span>
+    <span>
+      {% if page>1 %}
+        <a href="?page={{ page-1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ order }}">이전</a>
+      {% endif %} &nbsp; {{ page }} / {{ total_pages or 1 }} &nbsp; {% if page<total_pages %}
+      <a href="?page={{ page+1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ order }}">다음</a>
+{% endif %}
+</span>
+</div>
+<div class="modal-backdrop" id="qualityMemoModal">
+  <div class="modal compact-modal memo-modal">
+    <span class="modal-kicker">QUALITY NOTE</span>
+    <h2 id="qualityMemoTitle">품질 메모</h2>
+    <p id="qualityMemoContext"></p>
+    <textarea id="qualityMemoText" placeholder="이 셀과 관련된 메모를 입력하세요."></textarea>
+    <div class="modal-actions">
+      <button class="secondary" id="qualityMemoCancel" type="button">취소</button>
+      <button id="qualityMemoSave" type="button">저장</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="rndTransferModal">
+  <div class="modal compact-modal">
+    <span class="modal-kicker">PHYSICAL TRANSFER</span>
+    <h2>연구소 실물 이관 요청</h2>
+    <p id="rndTransferSummary">선택한 품질 분석품을 연구소로 이관 요청합니다.</p>
+    <label class="filter-field">
+      이관 유형<select id="rndTransferType">
+      <option value="set">Set</option>
+      <option value="ring">Ring</option>
+      <option value="cradle">Cradle</option>
+      </select>
+    </label>
+    <label class="urgent-check">
+      <input type="checkbox" id="rndTransferUrgent">
+      <span>
+        <strong>긴급 요청</strong>
+        <small>연구소에서 우선 확인이 필요한 건</small>
+      </span>
+    </label>
+    <div class="modal-actions">
+      <button class="secondary" id="rndTransferCancel" type="button">취소</button>
+      <button id="rndTransferSubmit" type="button">이관 요청</button>
+    </div>
+  </div>
+</div>
+<div class="modal-backdrop" id="qualityCxModal">
+  <div class="modal flow-modal">
+    <span class="modal-kicker">CX CONTEXT</span>
+    <h2>CX 접수 정보</h2>
+    <p id="qualityCxCode"></p>
+    <div class="cx-context-grid">
+      <div class="cx-context-card wide">
+        <span>접수 유형</span>
+        <strong id="qualityCxCategory">-</strong>
+      </div>
+      <div class="cx-context-card">
+        <span>CX 분석 원인 1</span>
+        <strong id="qualityCxCause1">-</strong>
+      </div>
+      <div class="cx-context-card">
+        <span>CX 분석 원인 2</span>
+        <strong id="qualityCxCause2">-</strong>
+      </div>
+      <div class="cx-context-card wide">
+        <span>문의사항</span>
+        <p id="qualityCxInquiry">-</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" id="qualityCxClose" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+<script>
+    const processRevFile = document.getElementById('processRevFile');
+    const rndChecks = [...document.querySelectorAll('.quality-row-select')];
+    const rndOpen = document.getElementById('rndTransferOpen');
+    const rndModal = document.getElementById('rndTransferModal');
+    const updateRndSelection = () => {
+        const count = rndChecks.filter(item => item.checked).length;
+        rndOpen.textContent = count ? `연구소 실물 이관 (${count})` : '연구소 실물 이관';
+        rndOpen.disabled = count === 0;
+        const selectable = rndChecks.filter(item => !item.disabled);
+        const all = document.getElementById('qualitySelectAll');
+        all.checked = selectable.length > 0 && selectable.every(item => item.checked);
+        all.indeterminate = count > 0 && !all.checked;
+    };
+    rndChecks.forEach(item => item.addEventListener('change', updateRndSelection));
+    document.getElementById('qualitySelectAll').addEventListener('change', event => {
+        rndChecks.filter(item => !item.disabled).forEach(item => item.checked = event.target.checked);
+        updateRndSelection();
+    });
+    rndOpen.addEventListener('click', () => {
+        const selected = rndChecks.filter(item => item.checked);
+        document.getElementById('rndTransferSummary').textContent = `선택한 ${selected.length}건의 실물을 연구소로 이관 요청합니다.`;
+        rndModal.classList.add('open');
+    });
+    document.getElementById('rndTransferCancel').addEventListener('click', () => rndModal.classList.remove('open'));
+    rndModal.addEventListener('click', event => {
+        if (event.target === rndModal) rndModal.classList.remove('open')
+    });
+    document.getElementById('rndTransferSubmit').addEventListener('click', async event => {
+        const serials = rndChecks.filter(item => item.checked).map(item => item.value);
+        event.currentTarget.disabled = true;
+        try {
+            const response = await fetch(`/{{ product }}/quality/rnd-transfer-request`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    serial_nos: serials,
+                    request_type: document.getElementById('rndTransferType').value,
+                    urgent: document.getElementById('rndTransferUrgent').checked
+                })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.detail || '연구소 이관 요청을 등록하지 못했습니다.');
+            showToast(`${serials.length}건을 연구소에 이관 요청했습니다.`);
+            setTimeout(() => location.reload(), 650);
+        } catch (error) {
+            showToast(error.message, 'error');
+        } finally {
+            event.currentTarget.disabled = false;
+        }
+    });
+    const processRevMenu = document.getElementById('processRevMenu');
+    const processRevToggle = document.getElementById('processRevActionToggle');
+    const closeProcessRevMenu = () => {
+        processRevMenu.classList.remove('open');
+        processRevToggle.setAttribute('aria-expanded', 'false');
+    };
+    processRevToggle.addEventListener('click', event => {
+        event.stopPropagation();
+        const open = processRevMenu.classList.toggle('open');
+        processRevToggle.setAttribute('aria-expanded', String(open));
+    });
+    processRevMenu.addEventListener('click', event => event.stopPropagation());
+    document.addEventListener('click', closeProcessRevMenu);
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') closeProcessRevMenu();
+    });
+    document.getElementById('processRevUpload').addEventListener('click', () => {
+        closeProcessRevMenu();
+        processRevFile.click();
+    });
+    processRevFile.addEventListener('change', async () => {
+        const file = processRevFile.files[0];
+        if (!file) return;
+        const form = new FormData();
+        form.append('file', file);
+        const button = processRevToggle;
+        button.disabled = true;
+        button.textContent = '기준표 반영 중...';
+        try {
+            const response = await fetch(`/{{ product }}/quality/process-rev-upload`, {
+                method: 'POST',
+                body: form
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.detail || '기준표를 반영하지 못했습니다.');
+            showToast(`공정 Rev 기준 ${data.total}건 반영 · 신규 ${data.inserted}건 · 변경 ${data.updated}건`);
+            setTimeout(() => location.reload(), 700);
+        } catch (error) {
+            showToast(error.message, 'error');
+        } finally {
+            button.disabled = false;
+            button.textContent = '공정 Rev 기준 업데이트';
+            processRevFile.value = '';
+        }
+    });
+    document.querySelectorAll('.quality-value,.quality-result-select,[data-field="lab_transfer_date"],[data-field="return_transfer_date"]').forEach(el => el.addEventListener(['INPUT', 'SELECT'].includes(el.tagName) ? 'change' : 'blur', async () => {
+        const value = ['INPUT', 'SELECT'].includes(el.tagName) ? el.value : el.textContent.trim();
+        const r = await fetch(`/{{product}}/quality/update/${el.dataset.id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                field: el.dataset.field,
+                value
+            })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (r.ok) {
+            if (['return_transfer_date', 'lab_transfer_date'].includes(el.dataset.field)) el.value = data.value || '';
+            showToast('검사 결과를 저장했습니다.');
+            if (data.completed && ['quality_result', 'lab_transfer_date'].includes(el.dataset.field)) {
+                setTimeout(() => location.reload(), 450)
+            }
+        } else {
+            showToast(data.detail || '저장하지 못했습니다.', 'error');
+        }
+    }));
+    const memoModal = document.getElementById('qualityMemoModal'),
+        memoTitle = document.getElementById('qualityMemoTitle'),
+        memoContext = document.getElementById('qualityMemoContext'),
+        memoText = document.getElementById('qualityMemoText');
+    let activeMemoTrigger = null;
+    document.querySelectorAll('.memo-trigger').forEach(button => button.addEventListener('click', () => {
+        activeMemoTrigger = button;
+        memoTitle.textContent = `${button.dataset.fieldLabel} 메모`;
+        memoContext.textContent = `식별코드 ${button.dataset.transferNo}`;
+        memoText.value = button.dataset.memo || '';
+        memoModal.classList.add('open');
+        setTimeout(() => memoText.focus(), 0)
+    }));
+    document.getElementById('qualityMemoCancel').onclick = () => memoModal.classList.remove('open');
+    document.getElementById('qualityMemoSave').onclick = async () => {
+        if (!activeMemoTrigger) return;
+        const response = await fetch(`/{{ product }}/quality/memo`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                quality_id: Number(activeMemoTrigger.dataset.qualityId),
+                field_name: activeMemoTrigger.dataset.fieldName,
+                memo: memoText.value
+            })
+        });
+        if (!response.ok) {
+            showToast('메모를 저장하지 못했습니다.', 'error');
+            return
+        }
+        activeMemoTrigger.dataset.memo = memoText.value.trim();
+        activeMemoTrigger.classList.toggle('has-memo', Boolean(memoText.value.trim()));
+        memoModal.classList.remove('open');
+        showToast('메모를 저장했습니다.')
+    };
+    memoModal.addEventListener('click', event => {
+        if (event.target === memoModal) memoModal.classList.remove('open')
+    });
+    const cxModal = document.getElementById('qualityCxModal');
+    document.querySelectorAll('.cx-context-trigger').forEach(button => button.addEventListener('click', () => {
+        const path = values => values.filter(Boolean).join(' > ') || '-';
+        document.getElementById('qualityCxCode').textContent = `식별코드 ${button.dataset.transferNo}`;
+        document.getElementById('qualityCxCategory').textContent = path([button.dataset.categoryMain, button.dataset.categorySub]);
+        document.getElementById('qualityCxCause1').textContent = path([button.dataset.issue1, button.dataset.depthOneOne, button.dataset.depthOneTwo]);
+        document.getElementById('qualityCxCause2').textContent = path([button.dataset.issue2, button.dataset.depthTwoOne, button.dataset.depthTwoTwo]);
+        document.getElementById('qualityCxInquiry').textContent = button.dataset.description || '-';
+        cxModal.classList.add('open')
+    }));
+    document.getElementById('qualityCxClose').onclick = () => cxModal.classList.remove('open');
+    cxModal.addEventListener('click', event => {
+        if (event.target === cxModal) cxModal.classList.remove('open')
+    });
+    (async () => {
+        const r = await fetch('/{{product}}/exchange/transfer-requests');
+        if (!r.ok) return;
+        const d = await r.json(),
+            pending = (d.requests || []).filter(x => x.status === 'requested').length;
+        const pendingBadge = document.getElementById('pendingTransferCount');
+        if (pendingBadge && pending) {
+            pendingBadge.textContent = `${pending}건`;
+            pendingBadge.hidden = false
+        }
+    })();
+</script>
+{% endblock %}

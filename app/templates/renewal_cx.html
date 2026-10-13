@@ -1,0 +1,1374 @@
+{% extends "base.html" %}
+{% block page_name %}CX 분석{% endblock %}
+{% set bp_profile = (request.app.state.product_config(product) or {}).get('profile') == 'bp' %}
+{% block content %}
+  <style>
+      .cx-grid {
+          table-layout: fixed;
+          min-width: {{ 3440 if bp_profile else 3740 }}px
+      }
+
+      .cx-grid th,
+      .cx-grid td {
+          vertical-align: middle
+      }
+
+      .cx-grid tbody tr:hover td {
+          background: inherit
+      }
+
+      .cx-grid .sheet-sticky-x::after {
+          display: none
+      }
+
+      .cx-grid th:nth-child(-n+{{ 6 if bp_profile else 7 }}),
+      .cx-grid td:nth-child(-n+{{ 6 if bp_profile else 7 }}) {
+          position: sticky;
+          z-index: 4;
+          background: #fff
+      }
+
+      .cx-grid thead th:nth-child(-n+{{ 6 if bp_profile else 7 }}) {
+          z-index: 12;
+          background: #f7f9fb
+      }
+
+      .cx-grid tbody tr:nth-child(even) td:nth-child(-n+{{ 6 if bp_profile else 7 }}) {
+          background: #fbfcfd
+      }
+
+      .cx-grid tbody tr:hover td:nth-child(-n+{{ 6 if bp_profile else 7 }}) {
+          background: #f1f8fa
+      }
+
+      .cx-grid th:nth-child(1),
+      .cx-grid td:nth-child(1) {
+          left: 0;
+          width: 64px;
+          min-width: 64px;
+          max-width: 64px
+      }
+
+      .cx-grid th:nth-child(2),
+      .cx-grid td:nth-child(2) {
+          left: 64px;
+          width: 44px;
+          min-width: 44px;
+          max-width: 44px
+      }
+
+      .cx-grid th:nth-child(3),
+      .cx-grid td:nth-child(3) {
+          left: 108px;
+          width: 48px;
+          min-width: 48px;
+          max-width: 48px
+      }
+
+      .cx-grid th:nth-child(4),
+      .cx-grid td:nth-child(4) {
+          left: 156px;
+          width: 112px;
+          min-width: 112px;
+          max-width: 112px
+      }
+      {% if bp_profile %}
+      .cx-grid th:nth-child(5),
+      .cx-grid td:nth-child(5) {
+          left: 268px;
+          width: 85px;
+          min-width: 85px;
+          max-width: 85px
+      }
+
+      .cx-grid th:nth-child(6),
+      .cx-grid td:nth-child(6) {
+          left: 353px;
+          width: 105px;
+          min-width: 105px;
+          max-width: 105px;
+          border-right: 2px solid #cbd7df
+      }
+      {% else %}
+      .cx-grid th:nth-child(5),
+      .cx-grid td:nth-child(5) {
+          left: 268px;
+          width: 180px;
+          min-width: 180px;
+          max-width: 180px
+      }
+
+      .cx-grid th:nth-child(6),
+      .cx-grid td:nth-child(6) {
+          left: 448px;
+          width: 85px;
+          min-width: 85px;
+          max-width: 85px
+      }
+
+      .cx-grid th:nth-child(7),
+      .cx-grid td:nth-child(7) {
+          left: 533px;
+          width: 105px;
+          min-width: 105px;
+          max-width: 105px;
+          border-right: 2px solid #cbd7df
+      }
+      {% endif %}
+
+      .cx-grid td[contenteditable=true]:not(:nth-child(-n+{{ 6 if bp_profile else 7 }})) {
+          min-width: 110px
+      }
+
+      .cx-grid .date-cell {
+          width: 112px
+      }
+
+      .cx-grid .date-input {
+          width: 100px;
+          text-align: center
+      }
+
+      .cx-grid td.received-cell,
+      .cx-grid td.processed-cell,
+      .cx-grid td.received-cell input,
+      .cx-grid td.processed-cell input,
+      .cx-grid .handling {
+          text-align: center !important
+      }
+
+      .cx-grid td.received-cell input,
+      .cx-grid td.processed-cell input {
+          margin-right: auto;
+          margin-left: auto
+      }
+
+      .cx-grid .compact-datetime {
+          width: 112px;
+          text-align: center
+      }
+
+      .cx-grid .size-cell {
+          width: 58px;
+          min-width: 58px;
+          max-width: 58px;
+          padding: 7px 6px;
+          text-align: center
+      }
+
+      .cx-grid .size-input {
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+          padding: 3px 2px;
+          text-align: center
+      }
+
+      .cx-grid .inquiry-cell,
+      .cx-grid .result-cell {
+          width: 300px;
+          min-width: 300px;
+          max-width: 300px;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          text-align: left;
+          line-height: 1.45
+      }
+
+      .cx-grid .dash {
+          color: #94a3b8;
+          text-align: center
+      }
+
+      .cx-grid .lot-cell {
+          min-width: 115px;
+          font-variant-numeric: tabular-nums
+      }
+
+      .cx-grid select {
+          min-width: 90px;
+          padding-right: 6px;
+          border-color: transparent;
+          background-image: none;
+          box-shadow: none;
+          cursor: pointer;
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none
+      }
+
+      .cx-grid select::-ms-expand {
+          display: none
+      }
+
+      .cx-grid select:hover {
+          border-color: transparent;
+          background: rgba(23, 107, 135, .045)
+      }
+
+      .cx-grid .yn-select {
+          min-width: 54px
+      }
+
+      .cx-grid .data-loss-cell {
+          width: 126px;
+          min-width: 126px
+      }
+
+      .cx-grid .data-loss-select {
+          width: 114px;
+          min-width: 114px;
+          font-weight: 700
+      }
+
+      .cx-grid .data-loss-select.non-device-failure {
+          color: #087f78;
+          background: #ecfdfb
+      }
+
+      .cx-grid .data-loss-select.device-failure {
+          color: #b54708;
+          background: #fff7ed
+      }
+
+      .cx-grid .data-loss-count-cell {
+          width: 72px;
+          min-width: 72px;
+          max-width: 72px;
+          text-align: center
+      }
+
+      .cx-grid .data-loss-count {
+          width: 54px;
+          min-width: 0;
+          padding: 4px;
+          text-align: center
+      }
+
+      .cx-grid .data-loss-count:disabled {
+          color: #94a3b8;
+          background: #f1f5f9
+      }
+
+      .loss-automation-guide {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: -5px 0 12px;
+          padding: 9px 12px;
+          border: 1px solid #cfe8ec;
+          border-radius: 10px;
+          background: #f2fbfc;
+          color: #42636b;
+          font-size: 10px
+      }
+
+      .loss-automation-guide strong {
+          color: #087c8c
+      }
+
+      .sort-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          white-space: nowrap
+      }
+
+      .sort-toggle .sort-state {
+          color: #64748b;
+          font-size: 14px;
+          font-weight: 700
+      }
+
+      .slack-import-modal {
+          display: flex;
+          flex-direction: column;
+          max-height: 92vh;
+          overflow: hidden
+      }
+
+      .slack-import-settings {
+          display: grid;
+          grid-template-columns: 210px minmax(0, 1fr);
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 12px;
+          padding: 11px 13px;
+          border: 1px solid #d7e3e8;
+          border-radius: 10px;
+          background: #f7fafb
+      }
+
+      .slack-import-settings label {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          color: #526276;
+          font-size: 11px;
+          font-weight: 750
+      }
+
+      .slack-import-settings select {
+          width: 100%;
+          min-height: 36px
+      }
+
+      .slack-import-settings p {
+          margin: 0;
+          color: #64748b;
+          font-size: 11px;
+          line-height: 1.5
+      }
+
+      .slack-import-modal #slackText {
+          min-height: 145px;
+          flex: 0 0 auto
+      }
+
+      .slack-import-modal .preview-wrap {
+          max-height: 43vh;
+          overflow-x: hidden;
+          overflow-y: auto;
+          padding: 10px;
+          background: #f3f7f9
+      }
+
+      .slack-preview-cards {
+          display: grid;
+          gap: 10px
+      }
+
+      .slack-preview-card {
+          overflow: hidden;
+          border: 1px solid #d7e1e7;
+          border-radius: 11px;
+          background: #fff
+      }
+
+      .slack-preview-head {
+          position: sticky;
+          top: -10px;
+          z-index: 2;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 11px;
+          border-bottom: 1px solid #e2e8ed;
+          background: #f8fafb
+      }
+
+      .slack-preview-head strong {
+          color: #173d50;
+          font-size: 12px
+      }
+
+      .slack-preview-head input {
+          width: 105px;
+          min-height: 32px;
+          padding: 4px 7px;
+          font-size: 12px;
+          font-weight: 750
+      }
+
+      .slack-preview-head .cx-preview-input {
+          width: 45px;
+          margin-left: auto;
+          text-align: center
+      }
+
+      .slack-preview-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 9px;
+          padding: 11px
+      }
+
+      .slack-preview-field {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 4px;
+          color: #65758a;
+          font-size: 10px;
+          font-weight: 700
+      }
+
+      .slack-preview-field input {
+          width: 100%;
+          min-width: 0;
+          min-height: 34px;
+          padding: 5px 7px;
+          color: #26364b;
+          font-size: 12px;
+          font-weight: 600
+      }
+
+      .slack-preview-field.wide {
+          grid-column: span 2
+      }
+
+      .slack-preview-field.full {
+          grid-column: 1 / -1
+      }
+
+      .auto-exchange-badge {
+          padding: 4px 7px;
+          border-radius: 999px;
+          background: #e7f6ef;
+          color: #18734e;
+          font-size: 10px;
+          font-weight: 800
+      }
+
+      @media(max-width: 850px) {
+
+          .slack-import-settings,
+          .slack-preview-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr))
+          }
+
+          .slack-import-settings p {
+              grid-column: 1 / -1
+          }
+      }
+
+      .review-badge {
+          display: inline-flex;
+          align-items: center;
+          min-height: 22px;
+          padding: 0 8px;
+          border-radius: 999px;
+          background: #fff0bf;
+          color: #8a5a00;
+          font-size: 9px;
+          font-weight: 700;
+          white-space: nowrap
+      }
+
+      .row-context-menu {
+          display: none;
+          position: fixed;
+          z-index: 520;
+          min-width: 130px;
+          padding: 6px;
+          border: 1px solid #d8dee8;
+          border-radius: 9px;
+          background: #fff;
+          box-shadow: 0 15px 40px rgba(15, 23, 42, .18)
+      }
+
+      .row-context-menu.open {
+          display: block
+      }
+
+      .row-context-menu button {
+          width: 100%;
+          justify-content: flex-start;
+          border: 0;
+          background: transparent;
+          color: #b42336;
+          box-shadow: none
+      }
+
+      .delete-warning {
+          margin-top: 12px;
+          padding: 10px;
+          border-radius: 8px;
+          background: #fff1f2;
+          color: #9f2133;
+          font-size: 10px;
+          line-height: 1.55
+      }
+
+      #confirmCaseDelete {
+          border-color: #b42336;
+          background: #b42336
+      }
+  </style>
+  <div class="page-head">
+    <div class="page-title">
+      <span>CUSTOMER EXPERIENCE</span>
+      <h1>CX 통합 분석</h1>
+      <p>상담 접수부터 CX·RnD 분석까지 하나의 작업공간에서 관리합니다.</p>
+    </div>
+    <div class="actions">
+      <button class="secondary" id="openSlack" type="button">Slack 붙여넣기</button>
+      <button id="addRow" type="button">+ 새 접수</button>
+    </div>
+  </div>
+  <div class="workspace-toolbar">
+    <form class="filters" method="get">
+      <input type="hidden" name="order" value="{{ order }}">
+      {% if week_filter %}
+        <input type="hidden" name="week" value="{{ week_filter }}">
+      {% endif %}
+      <label class="filter-field">
+        연도<select name="year">
+        {% for year in available_years %}
+          <option value="{{ year }}" {% if year == selected_year %}selected{% endif %}>{{ year }}년</option>
+        {% endfor %}
+        </select>
+      </label>
+      <label class="filter-field search">
+        통합 검색<input name="keyword"
+       value="{{ keyword }}"
+       placeholder="{{ '식별코드, S/N, 문의사항' if bp_profile else '병원명, 식별코드, S/N, 문의사항' }}">
+      </label>
+      <label class="filter-field">
+        표시 개수<select name="limit">
+        <option {% if limit==20 %}selected{% endif %}>20</option>
+        <option {% if limit==50 %}selected{% endif %}>50</option>
+        <option {% if limit==100 %}selected{% endif %}>100</option>
+        </select>
+      </label>
+      <button>조회</button>
+      <a class="button secondary"
+         href="/{{ product }}/cx?year={{ selected_year }}">초기화</a>
+    </form>
+    <div class="sort-toggle">
+      <span class="sort-state">현재 {{ '내림차순' if order == 'desc' else '오름차순' }}</span>
+      <a class="button secondary"
+         href="?page=1&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;year={{ selected_year }}{% if week_filter %}&amp;week={{ week_filter|urlencode }}{% endif %}
+{% if review %}&amp;review=1{% endif %}&amp;order={{ 'asc' if order == 'desc' else 'desc' }}">{{ '오름차순' if order == 'desc' else '내림차순' }}으로 정렬</a>
+      <span class="filter-field">{{ '확인 필요' if review else '전체 접수' }}<strong>{{ total }}건</strong>
+      </span>
+    </div>
+  </div>
+  <div class="data-card">
+    <div class="table-scroll">
+      <table class="cx-grid spreadsheet-enhanced" data-sticky-through="식별코드">
+        <thead>
+          <tr>
+            {% set headers = [
+              "흐름",
+              "월",
+              "주",
+              "일자",
+              "병원명",
+              "REV 구분",
+              "식별코드",
+              "CX",
+              "RnD",
+              "RnD Team",
+              "접수 유형(대)",
+              "접수 유형(소)",
+              "문의사항",
+              "교품 여부",
+              "S/N",
+              "LOT",
+              "Size",
+              "접수",
+              "처리",
+              "처리시간",
+              "처리 결과",
+              "데이터 손실",
+              "손실 건수",
+              "불량원인 1",
+              "Depth 1-1",
+              "Depth 1-2",
+              "불량원인 2",
+              "Depth 2-1",
+              "Depth 2-2"
+            ] %}
+            {% for h in headers %}
+              {% if not bp_profile or h not in ['병원명', '데이터 손실', '손실 건수'] %}
+                <th>{{ h }}</th>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody id="cxRows">
+          {% for row in rows %}
+            {% set cx = analyses.get(row.transfer_no) %}
+            {% set is_cx = (row.cx_transfer or '')|upper == 'O' %}
+            <tr data-id="{{ row.id }}">
+              <td>
+                <button class="flow-btn"
+                        type="button"
+                        data-workflow-transfer="{{ row.transfer_no or '' }}"
+                        data-product="{{ product }}">흐름</button>
+              </td>
+              <td class="month">{{ row.date_only.month if row.date_only else '' }}</td>
+              <td class="week">{{ row.week or '' }}</td>
+              <td class="date-cell">
+                <input class="date-input"
+                       type="text"
+                       inputmode="numeric"
+                       placeholder="yyyy-mm-dd"
+                       data-scope="case"
+                       data-field="date_only"
+                       value="{{ row.date_only.strftime('%Y-%m-%d') if row.date_only else '' }}">
+              </td>
+              {% if not bp_profile %}
+                <td contenteditable="true" data-scope="case" data-field="hospital_name">{{ row.hospital_name or '' }}</td>
+              {% endif %}
+              <td contenteditable="true" data-scope="case" data-field="rev">{{ row.rev or ('Rev.1' if row.serial_no and (row.serial_no|upper|first) in ['F', 'K'] else 'Rev.2' if row.serial_no and (row.serial_no|upper|first) == 'G' else '') }}</td>
+              <td contenteditable="true" data-scope="case" data-field="transfer_no">{{ 'N/A' if row.transfer_no and row.transfer_no[:6] == '__NA__' else (row.transfer_no or '') }}</td>
+              <td>
+                <select class="yn-select cx-yn" data-scope="cx" data-field="cx_yn">
+                  <option></option>
+                  <option {% if is_cx %}selected{% endif %}>O</option>
+                </select>
+              </td>
+              <td>
+                <select class="yn-select" data-scope="cx" data-field="rnd_yn">
+                  <option></option>
+                  <option {% if (row.rnd_transfer or '')|upper == 'O' %}selected{% endif %}>O</option>
+                </select>
+              </td>
+              <td>
+                <select data-scope="cx" data-field="rnd_team">
+                  <option></option>
+                  {% for v in ['App','Server','F/W','H/W','VSP','Admin 개선'] %}
+                    <option {% if row.rnd_team==v %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td>
+                <select class="category-main"
+                        data-scope="case"
+                        data-field="category_main"
+                        data-value="{{ row.category_main or '' }}"></select>
+              </td>
+              <td>
+                <select class="category-sub"
+                        data-scope="case"
+                        data-field="category_sub"
+                        data-value="{{ row.category_sub or '' }}"></select>
+              </td>
+              <td class="inquiry-cell"
+                  contenteditable="true"
+                  data-scope="case"
+                  data-field="description">{{ row.description or '' }}</td>
+              <td>
+                <select data-scope="case" data-field="exchange_type">
+                  <option></option>
+                  {% set normalized_exchange = (row.exchange_type or '')|trim|lower %}
+                  {% for v in ['O','X','Cradle'] %}
+                    <option {% if normalized_exchange == v|lower %}selected{% endif %}>{{ v }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td contenteditable="true" data-scope="case" data-field="serial_no">{{ row.serial_no or '' }}</td>
+              <td class="lot-cell">{{ row.lot or (row.serial_no.split("-")[0] if row.serial_no else '') }}</td>
+              <td class="size-cell">
+                <input class="size-input"
+                       type="text"
+                       inputmode="numeric"
+                       maxlength="2"
+                       pattern="[0-9]{0,2}"
+                       data-scope="case"
+                       data-field="size"
+                       value="{{ (row.size or '')|replace('호', '') }}">
+              </td>
+              <td class="cx-time received-cell"
+                  data-stored-value="{% if row.received_at %}{{ row.received_at.month }}/{{ row.received_at.day }} {{ row.received_at.strftime('%H:%M') }}{% elif cx and cx.received_at %}{{ cx.received_at.month }}/{{ cx.received_at.day }} {{ cx.received_at.strftime('%H:%M') }}{% endif %}">
+                {% if is_cx %}
+                  <input class="compact-datetime"
+                         type="text"
+                         inputmode="numeric"
+                         placeholder="8/17 10:00"
+                         data-scope="cx"
+                         data-field="received_at"
+                         value="{% if row.received_at %}{{ row.received_at.month }}/{{ row.received_at.day }} {{ row.received_at.strftime('%H:%M') }}{% elif cx and cx.received_at %}{{ cx.received_at.month }}/{{ cx.received_at.day }} {{ cx.received_at.strftime('%H:%M') }}{% endif %}">
+                {% else %}
+                  <span class="dash">-</span>
+                {% endif %}
+              </td>
+              <td class="cx-time processed-cell"
+                  data-stored-value="{% if row.processed_at %}{{ row.processed_at.month }}/{{ row.processed_at.day }} {{ row.processed_at.strftime('%H:%M') }}{% elif cx and cx.processed_at %}{{ cx.processed_at.month }}/{{ cx.processed_at.day }} {{ cx.processed_at.strftime('%H:%M') }}{% endif %}">
+                {% if is_cx %}
+                  <input class="compact-datetime"
+                         type="text"
+                         inputmode="numeric"
+                         placeholder="8/17 11:00"
+                         data-scope="cx"
+                         data-field="processed_at"
+                         value="{% if row.processed_at %}{{ row.processed_at.month }}/{{ row.processed_at.day }} {{ row.processed_at.strftime('%H:%M') }}{% elif cx and cx.processed_at %}{{ cx.processed_at.month }}/{{ cx.processed_at.day }} {{ cx.processed_at.strftime('%H:%M') }}{% endif %}">
+                {% else %}
+                  <span class="dash">-</span>
+                {% endif %}
+              </td>
+              {% set effective_received = row.received_at or (cx.received_at if cx else none) %}
+              {% set effective_processed = row.processed_at or (cx.processed_at if cx else none) %}
+              <td class="cx-handling handling">
+                {% if is_cx and effective_received and effective_processed %}{{ ((effective_processed-effective_received).total_seconds() /60)|round|int }}분{% else %}-{% endif %}
+              </td>
+              <td class="result-cell"
+                  contenteditable="true"
+                  data-scope="cx"
+                  data-field="result_summary">{{ cx.result_summary or '' if cx else '' }}</td>
+              {% if not bp_profile %}
+                <td class="data-loss-cell">
+                  <select class="data-loss-select {% if cx and cx.data_loss_type in ['general', 'non_device_failure'] %}non-device-failure{% elif cx and cx.data_loss_type == 'device_failure' %}device-failure{% endif %}"
+                          data-scope="cx"
+                          data-field="data_loss_type"
+                          title="기기 고장 포함은 두 손실의 합계, 기기 고장 미포함은 기기 미고장 손실만 집계됩니다.">
+                    <option value=""></option>
+                    <option value="device_failure"
+                            {% if cx and cx.data_loss_type == 'device_failure' %}selected{% endif %}>기기 고장 손실</option>
+                    <option value="non_device_failure"
+                            {% if cx and cx.data_loss_type in ['general', 'non_device_failure'] %}selected{% endif %}>기기 미고장 손실</option>
+                  </select>
+                </td>
+                <td class="data-loss-count-cell">
+                  <input class="data-loss-count"
+                         type="number"
+                         min="1"
+                         max="999"
+                         inputmode="numeric"
+                         data-scope="cx"
+                         data-field="data_loss_count"
+                         value="{% if cx and cx.data_loss_type %}{{ cx.data_loss_count or 1 }}{% endif %}"
+                         {% if not cx or not cx.data_loss_type %}disabled{% endif %}>
+                </td>
+              {% endif %}
+              <td>
+                <select class="cause-select"
+                        data-scope="cx"
+                        data-field="issue1"
+                        data-value="{{ (cx.issue1 or '') if cx else '' }}"></select>
+              </td>
+              <td>
+                <select class="depth-one-select"
+                        data-scope="cx"
+                        data-field="depth1_1"
+                        data-parent="issue1"
+                        data-value="{{ (cx.depth1_1 or '') if cx else '' }}"></select>
+              </td>
+              <td>
+                <select class="depth-two-select"
+                        data-scope="cx"
+                        data-field="depth1_2"
+                        data-parent="depth1_1"
+                        data-value="{{ (cx.depth1_2 or '') if cx else '' }}"></select>
+              </td>
+              <td>
+                <select class="cause-select"
+                        data-scope="cx"
+                        data-field="issue2"
+                        data-value="{{ (cx.issue2 or '') if cx else '' }}"></select>
+              </td>
+              <td>
+                <select class="depth-one-select"
+                        data-scope="cx"
+                        data-field="depth2_1"
+                        data-parent="issue2"
+                        data-value="{{ (cx.depth2_1 or '') if cx else '' }}"></select>
+              </td>
+              <td>
+                <select class="depth-two-select"
+                        data-scope="cx"
+                        data-field="depth2_2"
+                        data-parent="depth2_1"
+                        data-value="{{ (cx.depth2_2 or '') if cx else '' }}"></select>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="{{ 26 if bp_profile else 29 }}" class="empty-state">등록된 접수가 없습니다. 새 접수를 추가하거나 Slack 내용을 가져오세요.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="footer-row"
+       data-page="{{ page }}"
+       data-total-pages="{{ total_pages or 1 }}">
+    <span>수정 내용은 자동 저장됩니다. 행을 우클릭하면 삭제할 수 있습니다.</span>
+    <span>
+      {% if page>1 %}
+        <a href="?page={{ page-1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;year={{ selected_year }}{% if week_filter %}&amp;week={{ week_filter|urlencode }}{% endif %}
+{% if review %}&amp;review=1{% endif %}&amp;order={{ order }}">← 이전</a>
+      {% endif %}　{{ page }} / {{ total_pages }}　{% if page<total_pages %}
+      <a href="?page={{ page+1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;year={{ selected_year }}{% if week_filter %}&amp;week={{ week_filter|urlencode }}{% endif %}
+{% if review %}&amp;review=1{% endif %}&amp;order={{ order }}">다음 →</a>
+{% endif %}
+</span>
+</div>
+<div class="modal-backdrop" id="slackModal">
+  <div class="modal slack-import-modal">
+    <h2>Slack 접수 가져오기</h2>
+    <p>Slack 상담 메시지를 붙여넣고 분석 결과를 확인한 뒤 CX 목록에 등록합니다.</p>
+    <div class="slack-import-settings">
+      <label>
+        기존 행 반영 범위
+        <select id="slackUpdateScope">
+          {% if not bp_profile %}
+            <option value="hospital">빈 병원명만 보완</option>
+          {% endif %}
+          <option value="category">카테고리·문의사항 분석만 반영</option>
+          <option value="size">호수(Size)만 반영</option>
+          {% if not bp_profile %}
+            <option value="both">빈 병원명 + 카테고리 분석</option>
+          {% endif %}
+        </select>
+      </label>
+      <p id="slackUpdateScopeHint">동일 식별코드가 있으면 선택한 항목만 반영하며 다른 셀은 유지합니다. 신규 식별코드는 전체 내용으로 등록됩니다.</p>
+    </div>
+    <textarea id="slackText" placeholder="Slack 메시지를 여러 건 붙여넣어 주세요."></textarea>
+    <div class="preview-wrap" id="previewWrap">
+      <div class="slack-preview-cards" id="previewBody"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="secondary" id="closeSlack" type="button">취소</button>
+      <button class="secondary" id="analyzeSlack" type="button">내용 분석</button>
+      <button id="saveSlack" type="button" hidden>접수 등록</button>
+    </div>
+  </div>
+</div>
+<div class="row-context-menu" id="cxRowContextMenu" role="menu">
+  <button id="openCaseDelete" type="button" role="menuitem">행 삭제</button>
+</div>
+<div class="modal-backdrop" id="deleteCaseModal">
+  <div class="modal compact-modal">
+    <span class="modal-kicker">DELETE CASE</span>
+    <h2>접수 행 삭제</h2>
+    <p id="deleteCaseContext"></p>
+    <div class="delete-warning">CX 분석과 연결된 교품·품질·연구소 데이터 및 첨부 파일도 함께 삭제됩니다. 삭제 후 복구할 수 없습니다.</div>
+    <div class="modal-actions">
+      <button class="secondary" id="cancelCaseDelete" type="button">취소</button>
+      <button id="confirmCaseDelete" type="button">삭제</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+  <script>
+      const product = {{ product|tojson }};
+      const bpProfile = {{ bp_profile|tojson }};
+      const slackToken = {{ slack_token|tojson }};
+      const categoryMap = Object.fromEntries({{ category_map.items()|list|tojson }});
+      const causeMap = {
+          'H/W 이슈': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'MCU', 'PMIC', 'AFE(센서 불량)', 'Memory(통신 불량)', 'IMU', '무선 충전 IC', 'BLE 안테나 IC', '배터리 불량', '정합', '크래들 불량', '분석 불가', 'PD 불량', '기타', '양품'],
+          '기구 이슈': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'Inner 타공부위 침수', '기타'],
+          '공정 이슈': ['PI Tape 누락', '에폭시 부족', '기타'],
+          'F/W 이슈': ['분석 필요', '04 Error', '버그 (04 error 제외)', '재현 안됨', '기타'],
+          'App 이슈': ['분석 필요', '기기 다중 연결', '버그', '재현 안됨', '기타'],
+          'Server 이슈': ['분석 필요', '기기 다중 연결', '서버 장애', '분기화 오류', '버그', '재현 안됨', '기타'],
+          '기획 이슈': ['사용성 이슈', '추가 가이드 고려', '기타'],
+          '측정 이슈': ['분석 필요', '움직임 또는 불규칙 신호', '불규칙 맥파', '사용자 보정 실수', '사이즈', '미착용', 'ISS 코너케이스', '음수/0/DC 변동', '기타'],
+          '기기 등록 이슈': ['타병원에 기기 등록', 'S/N 오류', '기타'],
+          '기타': []
+      };
+      const detailMap = {
+          'MCU': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+          'PMIC': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+          'AFE(센서 불량)': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+          'Memory(통신 불량)': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+          'IMU': ['회수 필요', '품질 분석 중', '연구개발 분석 중', '크랙', '침수', '단품 불량', 'SMT 불량', '기타'],
+          '배터리 불량': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'Cell 누액', 'PCM 불량', '냉땜', 'FPCB 단선', '과방전', '기타'],
+          '크래들 불량': ['회수 필요', '품질 분석 중', '연구개발 분석 중', 'LED 불량', 'Tx coil 불량', '충전 IC 불량', 'Load switch 불량', '침수', '기타'],
+          '서버 장애': ['서버 다운', '서버 불안정'],
+          '추가 가이드 고려': ['보정', '최적화', '기기 등록', '기기 연결', '기기 연결 해제', '환자 목록', '측정 방법', '측정 데이터', '리포트', 'IFU', '기타']
+      };
+
+      function options(select, values, saved = '') {
+          const available = [...new Set((values || []).filter(Boolean))];
+          if (saved && !available.includes(saved)) available.unshift(saved);
+          select.innerHTML = '<option value=""></option>' + available.map(v => `<option value="${v.replace(/"/g,'&quot;')}" ${v===saved?'selected':''}>${v}</option>`).join('')
+      }
+
+      function initRow(row) {
+          const main = row.querySelector('.category-main'),
+              sub = row.querySelector('.category-sub');
+          options(main, Object.keys(categoryMap), main.dataset.value);
+          options(sub, categoryMap[main.value] || [], sub.dataset.value);
+          row.querySelectorAll('.cause-select').forEach(el => options(el, Object.keys(causeMap), el.dataset.value));
+          row.querySelectorAll('.depth-one-select').forEach(el => options(el, causeMap[row.querySelector(`[data-field="${el.dataset.parent}"]`)?.value] || [], el.dataset.value));
+          row.querySelectorAll('.depth-two-select').forEach(el => options(el, detailMap[row.querySelector(`[data-field="${el.dataset.parent}"]`)?.value] || [], el.dataset.value))
+      }
+      document.querySelectorAll('#cxRows tr[data-id]').forEach(initRow);
+      const rowContextMenu = document.getElementById('cxRowContextMenu'),
+          deleteCaseModal = document.getElementById('deleteCaseModal'),
+          deleteCaseContext = document.getElementById('deleteCaseContext'),
+          confirmCaseDelete = document.getElementById('confirmCaseDelete');
+      let deleteTargetRow = null;
+      document.getElementById('cxRows').addEventListener('contextmenu', event => {
+          const row = event.target.closest('tr[data-id]');
+          if (!row) return;
+          event.preventDefault();
+          deleteTargetRow = row;
+          document.querySelectorAll('tr.case-active').forEach(item => item.classList.remove('case-active'));
+          row.classList.add('case-active');
+          rowContextMenu.classList.add('open');
+          const width = 140,
+              height = 46;
+          rowContextMenu.style.left = `${Math.min(event.clientX, window.innerWidth - width - 8)}px`;
+          rowContextMenu.style.top = `${Math.min(event.clientY, window.innerHeight - height - 8)}px`
+      });
+      document.addEventListener('click', event => {
+          if (!event.target.closest('#cxRowContextMenu')) rowContextMenu.classList.remove('open')
+      });
+      document.getElementById('openCaseDelete').onclick = () => {
+          rowContextMenu.classList.remove('open');
+          if (!deleteTargetRow) return;
+          const code = deleteTargetRow.querySelector('[data-field="transfer_no"]')?.innerText.trim() || '식별코드 없음',
+              hospital = deleteTargetRow.querySelector('[data-field="hospital_name"]')?.innerText.trim() || '병원명 없음';
+          deleteCaseContext.textContent = `${code} · ${hospital}`;
+          deleteCaseModal.classList.add('open')
+      };
+      document.getElementById('cancelCaseDelete').onclick = () => deleteCaseModal.classList.remove('open');
+      deleteCaseModal.addEventListener('click', event => {
+          if (event.target === deleteCaseModal) deleteCaseModal.classList.remove('open')
+      });
+      confirmCaseDelete.onclick = async () => {
+          if (!deleteTargetRow) return;
+          confirmCaseDelete.disabled = true;
+          confirmCaseDelete.textContent = '삭제 중…';
+          try {
+              const response = await fetch(`/${product}/cx/case/${deleteTargetRow.dataset.id}`, {
+                  method: 'DELETE'
+              });
+              let data = {};
+              try {
+                  data = await response.json()
+              } catch {}
+              if (!response.ok) throw new Error(data.detail || '행을 삭제하지 못했습니다.');
+              deleteTargetRow.remove();
+              deleteTargetRow = null;
+              deleteCaseModal.classList.remove('open');
+              showToast('접수 행을 삭제했습니다.');
+              setTimeout(() => location.reload(), 500)
+          } catch (error) {
+              showToast(error.message, 'error')
+          } finally {
+              confirmCaseDelete.disabled = false;
+              confirmCaseDelete.textContent = '삭제'
+          }
+      };
+      const selectedYear = {{ selected_year }};
+
+      function parseDate(value) {
+          const m = String(value || '').trim().match(/^(?:(\d{4})[.\/-])?(\d{1,2})[.\/-](\d{1,2})$/);
+          if (!m) return null;
+          const d = new Date(Number(m[1] || selectedYear), Number(m[2]) - 1, Number(m[3]));
+          return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null
+      }
+
+      function parseDateTime(value) {
+          const m = String(value || '').trim().match(/^(?:(\d{4})[.\/-])?(\d{1,2})[.\/-](\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+          if (!m) return null;
+          const d = new Date(Number(m[1] || selectedYear), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+          return d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]) ? d : null
+      }
+
+      function isoWeek(d) {
+          const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+          t.setUTCDate(t.getUTCDate() + 4 - (t.getUTCDay() || 7));
+          return Math.ceil((((t - new Date(Date.UTC(t.getUTCFullYear(), 0, 1))) / 86400000) + 1) / 7)
+      }
+
+      function ymd(d) {
+          return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      }
+
+      function updateHandlingTime(row) {
+          const received = parseDateTime(row.querySelector('[data-field="received_at"]')?.value),
+              processed = parseDateTime(row.querySelector('[data-field="processed_at"]')?.value);
+          row.querySelector('.cx-handling').textContent = received && processed && processed >= received ? `${Math.round((processed-received)/60000)}분` : '-'
+      }
+
+      function renderCxTimes(row, enabled) {
+          const received = row.querySelector('.received-cell'),
+              processed = row.querySelector('.processed-cell');
+          if (enabled) {
+              if (!received.querySelector('input')) received.innerHTML = `<input class="compact-datetime" type="text" inputmode="numeric" placeholder="8/17 10:00" data-scope="cx" data-field="received_at" value="${received.dataset.storedValue || ''}">`;
+              if (!processed.querySelector('input')) processed.innerHTML = `<input class="compact-datetime" type="text" inputmode="numeric" placeholder="8/17 11:00" data-scope="cx" data-field="processed_at" value="${processed.dataset.storedValue || ''}">`;
+              updateHandlingTime(row)
+          } else {
+              received.innerHTML = '<span class="dash">-</span>';
+              processed.innerHTML = '<span class="dash">-</span>';
+              row.querySelector('.cx-handling').textContent = '-'
+          }
+      }
+      async function save(el) {
+          const row = el.closest('tr'),
+              scope = el.dataset.scope,
+              value = el.matches('input,select,textarea') ? el.value : el.innerText.trim();
+          const trackedBefore = Object.prototype.hasOwnProperty.call(el.dataset, 'sheetBefore');
+          if (trackedBefore && el.dataset.sheetBefore === value) return {
+              ok: true,
+              skipped: true
+          };
+          if (el.classList.contains('date-input')) {
+              const d = parseDate(value);
+              if (value && !d) {
+                  showToast('yyyy-mm-dd 형식으로 입력해 주세요.', 'error');
+                  return
+              }
+              if (d) {
+                  el.value = ymd(d);
+                  row.querySelector('.month').textContent = d.getMonth() + 1;
+                  row.querySelector('.week').textContent = isoWeek(d)
+              }
+          }
+          if (el.classList.contains('compact-datetime') && value && !parseDateTime(value)) {
+              showToast('8/17 09:00 형식으로 입력해 주세요.', 'error');
+              return
+          }
+          if (el.classList.contains('size-input') && !/^\d{0,2}$/.test(value)) {
+              showToast('Size는 1~2자리 숫자만 입력해 주세요.', 'error');
+              el.value = value.replace(/\D/g, '').slice(0, 2);
+              return
+          }
+          if (el.classList.contains('data-loss-count') && (!/^\d{1,3}$/.test(value) || Number(value) < 1)) {
+              showToast('손실 건수는 1~999 사이로 입력해 주세요.', 'error');
+              el.value = Math.min(999, Math.max(1, Number(value) || 1));
+              return
+          }
+          const params = new URLSearchParams(location.search);
+          const url = scope === 'case' ? `/${product}/cx/case/update/${row.dataset.id}?order=${encodeURIComponent(params.get('order') || 'desc')}&limit=${encodeURIComponent(params.get('limit') || '50')}&year=${selectedYear}` : `/${product}/cx/update/${row.dataset.id}`;
+          const r = await fetch(url, {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                  field: el.dataset.field,
+                  value: el.value ?? value,
+                  year: selectedYear
+              })
+          });
+          let detail = {};
+          try {
+              detail = await r.json()
+          } catch {}
+          if (!r.ok) showToast(detail.detail || '저장 실패', 'error');
+          if (r.ok && el.dataset.field === 'transfer_no') {
+              params.set('page', String(detail.page || 1));
+              params.delete('keyword');
+              params.delete('week');
+              params.delete('review');
+              [...params.keys()].filter(key => key.startsWith('cf_')).forEach(key => params.delete(key));
+              location.search = params.toString();
+              return {
+                  ok: true,
+                  detail
+              }
+          }
+          if (r.ok && el.dataset.field === 'serial_no') {
+              const serial = detail.serial_no ?? value.trim().toUpperCase(),
+                  rev = row.querySelector('[data-field="rev"]'),
+                  lot = row.querySelector('.lot-cell');
+              el.textContent = serial;
+              rev.textContent = detail.rev ?? (/^(F|K)/.test(serial) ? 'Rev.1' : serial.startsWith('G') ? 'Rev.2' : '');
+              lot.textContent = detail.lot ?? (serial ? serial.split('-', 1)[0] : '')
+          }
+          if (r.ok && el.classList.contains('cx-yn')) renderCxTimes(row, value === 'O');
+          if (r.ok && ['received_at', 'processed_at'].includes(el.dataset.field)) {
+              el.closest('td').dataset.storedValue = el.value;
+              updateHandlingTime(row)
+          }
+          return {
+              ok: r.ok,
+              detail
+          }
+      }
+      document.addEventListener('input', e => {
+          if (e.target.matches('.size-input')) e.target.value = e.target.value.replace(/\D/g, '').slice(0, 2);
+          if (e.target.matches('.data-loss-count')) e.target.value = e.target.value.replace(/\D/g, '').slice(0, 3)
+      });
+      document.addEventListener('blur', e => {
+          if (e.target.matches('#cxRows [contenteditable=true],#cxRows textarea,#cxRows .date-input,#cxRows .compact-datetime,#cxRows .size-input,#cxRows .data-loss-count')) save(e.target)
+      }, true);
+      document.addEventListener('change', async e => {
+          if (!e.target.matches('#cxRows select')) return;
+          const row = e.target.closest('tr');
+          if (e.target.classList.contains('data-loss-select')) {
+              const count = row.querySelector('.data-loss-count'),
+                  date = parseDate(row.querySelector('.date-input')?.value);
+              if (e.target.value && !date) {
+                  e.target.value = '';
+                  showToast('데이터 손실을 지정하려면 일자를 먼저 입력해 주세요.', 'error');
+                  return
+              }
+              count.disabled = !e.target.value;
+              count.value = e.target.value ? (count.value || 1) : '';
+              e.target.classList.toggle('non-device-failure', e.target.value === 'non_device_failure');
+              e.target.classList.toggle('device-failure', e.target.value === 'device_failure')
+          }
+          if (e.target.classList.contains('category-main')) {
+              const sub = row.querySelector('.category-sub');
+              options(sub, categoryMap[e.target.value] || []);
+              save(sub)
+          }
+          if (e.target.classList.contains('cause-select')) {
+              const depth = row.querySelector(`[data-parent="${e.target.dataset.field}"]`);
+              if (depth) {
+                  options(depth, causeMap[e.target.value] || []);
+                  const detail = row.querySelector(`[data-parent="${depth.dataset.field}"]`);
+                  if (detail) options(detail, [])
+              }
+          }
+          if (e.target.classList.contains('depth-one-select')) {
+              const detail = row.querySelector(`[data-parent="${e.target.dataset.field}"]`);
+              if (detail) options(detail, detailMap[e.target.value] || [])
+          }
+          await save(e.target)
+      }, true);
+      document.getElementById('addRow').onclick = async () => {
+          const response = await fetch(`/${product}/cx/create?year=${selectedYear}`, {
+              method: 'POST'
+          });
+          if (!response.ok) {
+              showToast('새 접수를 만들지 못했습니다.', 'error');
+              return
+          }
+          const params = new URLSearchParams(location.search);
+          params.set('page', '1');
+          params.delete('keyword');
+          params.delete('week');
+          params.delete('review');
+          [...params.keys()].filter(key => key.startsWith('cf_')).forEach(key => params.delete(key));
+          location.search = params.toString()
+      };
+      const modal = document.getElementById('slackModal'),
+          esc = v => String(v ?? '').replace(/[&<>\"]/g, c => ({
+              '&': '&amp;',
+              '<': '&lt;',
+              '>': '&gt;',
+              '"': '&quot;'
+          } [c]));
+      const previewField = (label, field, value, className = '') => `<label class="slack-preview-field ${className}">${label}<input data-field="${field}" value="${esc(value)}"></label>`;
+      const renderSlackPreviewRows = items => items.map((x, index) => {
+          const autoExchange = String(x.category_sub || '').startsWith('기기 상태 이상');
+          return `<article class="slack-preview-card">
+        <div class="slack-preview-head"><strong>${index + 1}번 접수</strong><input data-field="transfer_no" value="${esc(x.transfer_no)}" aria-label="식별코드">${x.category_main==='기타'&&x.category_sub==='기타'?'<span class="review-badge">확인 필요</span>':''}${autoExchange?'<span class="auto-exchange-badge">교품·HW 원인 자동</span>':''}<input class="cx-preview-input" data-field="cx_transfer" value="${esc(x.cx_transfer)}" maxlength="1" aria-label="CX 이관"></div>
+        <div class="slack-preview-grid">
+          ${bpProfile ? '' : previewField('병원명', 'hospital_name', x.hospital_name, 'wide')}
+          ${previewField('접수 유형(대)', 'category_main', x.category_main)}
+          ${previewField('접수 유형(소)', 'category_sub', x.category_sub)}
+          ${previewField('접수 일시', 'received_at', x.received_at)}
+          ${previewField('S/N', 'serial_no', x.serial_no)}
+          ${previewField('호수(Size)', 'size', String(x.size || '').replace(/\D/g, '').slice(0, 2))}
+          ${previewField('문의사항 분석', 'description', x.description, 'full')}
+        </div>
+      </article>`
+      }).join('');
+      document.getElementById('openSlack').onclick = () => modal.classList.add('open');
+      document.getElementById('closeSlack').onclick = () => modal.classList.remove('open');
+      document.getElementById('analyzeSlack').onclick = async event => {
+          const button = event.currentTarget;
+          const text = document.getElementById('slackText').value.trim();
+          if (!text) {
+              showToast('분석할 Slack 내용을 붙여넣어 주세요.', 'error');
+              return;
+          }
+          button.disabled = true;
+          button.textContent = '분석 중…';
+          showToast('Slack 내용을 분석 중입니다.');
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          try {
+              const response = await fetch(`/${product}/cx/slack-preview`, {
+                  method: 'POST',
+                  credentials: 'same-origin',
+                  signal: controller.signal,
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-Slack-Token': slackToken
+                  },
+                  body: JSON.stringify({
+                      text
+                  })
+              });
+              if (response.redirected) {
+                  throw new Error('로그인 세션이 만료되었습니다. 페이지를 새로고침한 뒤 다시 로그인해 주세요.');
+              }
+              if (!response.headers.get('content-type')?.includes('application/json')) {
+                  throw new Error(`서버 오류가 발생했습니다. (${response.status})`);
+              }
+              const data = await response.json();
+              if (response.status === 401) {
+                  showToast(data.detail || '로그인 세션이 만료되었습니다.', 'error');
+                  setTimeout(() => location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`, 900);
+                  return;
+              }
+              if (!response.ok) throw new Error(data.detail || 'Slack 분석 요청에 실패했습니다.');
+              const items = data.items || [];
+              document.getElementById('previewBody').innerHTML = renderSlackPreviewRows(items);
+              document.getElementById('previewWrap').style.display = items.length ? 'block' : 'none';
+              document.getElementById('saveSlack').hidden = !items.length;
+              showToast(items.length ? `${items.length}건을 분석했습니다.` : '분석할 접수를 찾지 못했습니다. 이관번호와 문의사항 항목을 확인해 주세요.', items.length ? 'success' : 'error');
+          } catch (error) {
+              const message = error.name === 'AbortError' ? '분석 요청이 5초를 초과했습니다. 서버를 재시작한 뒤 다시 시도해 주세요.' : error.message;
+              showToast(message || 'Slack 분석 중 오류가 발생했습니다.', 'error');
+          } finally {
+              clearTimeout(timeout);
+              button.disabled = false;
+              button.textContent = '내용 분석';
+          }
+      };
+      document.getElementById('saveSlack').onclick = async event => {
+          const items = [...document.querySelectorAll('#previewBody .slack-preview-card')].map(row => {
+              const x = {};
+              row.querySelectorAll('[data-field]').forEach(el => x[el.dataset.field] = el.value);
+              return x
+          });
+          if (!items.length) {
+              showToast('먼저 Slack 내용을 분석해 주세요.', 'error');
+              return;
+          }
+          const button = event.currentTarget;
+          button.disabled = true;
+          button.textContent = '등록 중…';
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          try {
+              const response = await fetch(`/${product}/cx/slack-import`, {
+                  method: 'POST',
+                  credentials: 'same-origin',
+                  signal: controller.signal,
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'X-Slack-Token': slackToken
+                  },
+                  body: JSON.stringify({
+                      items,
+                      update_scope: document.getElementById('slackUpdateScope').value
+                  })
+              });
+              if (response.redirected) {
+                  throw new Error('로그인 세션이 만료되었습니다. 페이지를 새로고침한 뒤 다시 로그인해 주세요.');
+              }
+              if (!response.headers.get('content-type')?.includes('application/json')) {
+                  throw new Error(`서버 오류가 발생했습니다. (${response.status})`);
+              }
+              const data = await response.json();
+              if (response.status === 401) {
+                  showToast(data.detail || '로그인 세션이 만료되었습니다.', 'error');
+                  setTimeout(() => location.href = `/login?next=${encodeURIComponent(location.pathname + location.search)}`, 900);
+                  return;
+              }
+              if (!response.ok) throw new Error(data.detail || 'Slack 접수 등록에 실패했습니다.');
+              const results = [];
+              if (data.created) results.push(`신규 ${data.created}건`);
+              if (data.hospital_updated) results.push(`병원명 보완 ${data.hospital_updated}건`);
+              if (data.category_updated) results.push(`카테고리 분석 ${data.category_updated}건`);
+              if (data.size_updated) results.push(`호수 반영 ${data.size_updated}건`);
+              if (data.duplicate_merged) results.push(`중복 식별코드 ${data.duplicate_merged}건 통합`);
+              if (data.skipped?.length) results.push(`변경 없음 ${data.skipped.length}건`);
+              showToast(results.join(' · ') || '변경된 내용이 없습니다.');
+              if (data.created || data.hospital_updated || data.category_updated || data.size_updated) {
+                  setTimeout(() => location.reload(), 700);
+              }
+          } catch (error) {
+              const message = error.name === 'AbortError' ? '등록 요청이 5초를 초과했습니다.' : error.message;
+              showToast(message || 'Slack 등록 중 오류가 발생했습니다.', 'error');
+          } finally {
+              clearTimeout(timeout);
+              button.disabled = false;
+              button.textContent = '접수 등록';
+          }
+      };
+
+      function classifySlackDescription(description) {
+          const text = description.replace(/\s+/g, ' ').trim();
+          const lower = text.toLowerCase();
+          const has = words => words.some(word => text.includes(word));
+          const firstPosition = words => {
+              const positions = words.map(word => lower.indexOf(word.toLowerCase())).filter(position => position >= 0);
+              return positions.length ? Math.min(...positions) : -1
+          };
+          const connectionWords = ['기기 연결 불가', '카트링 연결 불가', '카트링 확인 불가', '근접 카트링 목록에 기기번호 비노출', '링 센서 X, BT 목록 X', '데이터 전송 지연', '데이터 전송 실패', '데이터 전송 불가', '데이터 전송 중 끊김'];
+          const dataTransferWords = ['데이터 전송 지연', '데이터 전송 실패', '데이터 전송 불가', '데이터 전송 중 끊김'];
+          const cradleWords = ['크래들 미점등', 'LED 안켜', 'LED 미점등', '크래들 red led 점멸', '크래들 red led', '크래들 빨간불 깜빡', '크래들 깜빡'];
+          const connectionPosition = firstPosition(connectionWords),
+              cradlePosition = firstPosition(cradleWords);
+          const connectionSummary = has(dataTransferWords) ? '데이터 전송 중 기기 연결 불가' : '기기 연결 불가';
+          if (has(['다운로드 할 데이터가 없습니다', '다운로드할 데이터가 없습니다', '리포트 다운로드 실패', '리포트 미생성', '리포트 출력 시 미생성', '미생성'])) return ['리포트 이슈', '리포트 미생성', '데이터 전송 후 다운로드 할 데이터 없음'];
+          if (['데이터 누락', '리포트 누락', 'bp unavailable', '수율', '데이터 분석 요청', '리포트 내용 이상', '측정 누락', '측정이 안됨'].some(word => lower.includes(word))) return ['리포트 이슈', '데이터 누락', '데이터 누락 사유 확인 요청'];
+          if (text.includes('보정 실패')) return ['측정 실패', '보정 실패', '보정 실패 사유 확인 요청'];
+          if (has(['횟수 원복', '횟수 복원', '횟수 조정', '원복 요청'])) return ['측정 횟수', '횟수 조정', has(['오연결', '오 연결']) ? '환자 오연결로 인한 원복 요청' : has(['변심', '손가락 변경']) ? '환자 단순 변심으로 인한 원복 요청' : text.includes('사이즈') ? '사이즈 변경으로 인한 원복 요청' : '기기 고장으로 인한 원복 요청'];
+          if (text.includes('회수')) return ['기타', '회수 문의', has(['오회수', '오 회수']) ? '오회수 문의' : '회수 문의'];
+          if (has(['정품 확인 불가', '정품인증 불가', '정품 인증 실패', '정품인증 실패', '정품 인증', '타병원', '병원 이동'])) return ['정품 인증', '병원 이동 및 등록', '기기 등록 시 정품 확인 불가 팝업'];
+          if (has(['환자 연결 해제', '기기 연결 해제', '연결 해제', '기기 분실'])) return ['환자 연결 해제', '', '환자 연결 해제 요청'];
+          if (connectionPosition >= 0 && (cradlePosition < 0 || connectionPosition < cradlePosition)) return ['기기 연결 불가', '기기 연결 불가', has(['링 센서 X', 'BT 목록 X']) ? `${connectionSummary}, 센서 및 BT 확인 불가` : connectionSummary];
+          if (has(['센서 습기', '링 센서 습기', '침수'])) return ['기기 고장', '센서 습기', '센서 습기'];
+          if (['센서 red led', '링 red led', '센서 빨간', '카트링 센서 점멸', '센서 점멸'].some(word => lower.includes(word))) return ['기기 고장', '센서 Red LED 깜빡임', '충전 중 센서 Red led 점멸'];
+          if (['크래들 red led 점멸', '크래들 red led', '크래들 빨간불 깜빡', '크래들 깜빡'].some(word => lower.includes(word)) || (text.includes('크래들') && text.includes('깜빡') && ['램프', 'led'].some(word => lower.includes(word)))) return ['기기 고장', '크래들 Red LED 깜빡임', '크래들 깜빡임'];
+          if (['크래들 green led 점멸', '크래들 green led', 'green led 깜빡'].some(word => lower.includes(word))) return ['기기 고장', '크래들 Green LED 깜빡임', '충전 중 Cradle Green LED 점멸'];
+          if (has(['크래들 미점등', 'LED 안켜', 'LED 미점등'])) return ['기기 고장', '크래들 LED 안켜짐', has(['링 센서 X', 'BT 목록 X', '연결 불가']) ? '크래들 미점등, 센서 및 BT 확인 불가' : '크래들 미점등, 기기 연결 가능'];
+          if (has(['기기 연결 불가', '카트링 연결 불가', '카트링 확인 불가', '근접 카트링 목록에 기기번호 비노출', 'BT 목록 X', '데이터 전송 지연', '데이터 전송 실패', '데이터 전송 불가', '데이터 전송 중 끊김'])) return ['기기 연결 불가', '기기 연결 불가', has(['링 센서 X', 'BT 목록 X']) ? `${connectionSummary}, 센서 및 BT 확인 불가` : connectionSummary];
+          if (has(['방전 빠름', '방전이 빠', '방전 속도'])) return ['기기 고장', '기타', '방전 빠름 문의'];
+          if (text.includes('발열')) return ['기기 고장', '발열', '발열 문의'];
+          if (has(['배터리 시간 불량', '배터리 성능', '배터리 지속'])) return ['기기 고장', '기기 상태 이상(배터리 성능)', '기기 상태 불량'];
+          if (has(['카트링 상태 이상', '배터리 불량', 'PMIC'])) return ['기기 고장', '기기 상태 이상(PMIC OVP)', '기기 상태 불량'];
+          if (has(['충전 불량', '완충 불가', '녹색으로 미전환', 'GREEN LED로 미전환'])) return ['기기 고장', '충전 불량', '충전 불량 문의'];
+          if (has(['외관 불량', '찌그러짐', '파손'])) return ['기기 고장', '기타', '외관 불량 문의'];
+          if (has(['팍스', '다이콤', '사용 가능 여부', '사용 관련 문의', '기기 점검 요청'])) return ['기타', '데이터 및 사용 관련 문의', text];
+          return ['기타', '기타', text];
+      }
+
+      function parseSlackInBrowser(text) {
+          const normalized = String(text || '').replace(/\r\n?/g, '\n');
+          const startPattern = /^\s*(?:[-•]\s*)?\*{0,2}1[.)]\s*\*{0,2}이관번호\*{0,2}\s*[:：]/gmi;
+          const starts = [...normalized.matchAll(startPattern)].map(match => match.index);
+          return starts.map((start, index) => {
+              const end = starts[index + 1] ?? normalized.length;
+              const previousReceipt = index ? normalized.lastIndexOf('5. 접수시간', start) : -1;
+              const contextStart = previousReceipt < 0 ? 0 : Math.max(previousReceipt, normalized.indexOf('\n', previousReceipt) + 1);
+              return {
+                  block: normalized.slice(start, end),
+                  context: normalized.slice(contextStart, start)
+              };
+          }).map(({
+              block,
+              context
+          }) => {
+              const field = (number, label) => {
+                  const pattern = new RegExp(`^\\s*(?:[-•]\\s*)?\\*{0,2}${number}[.)]\\s*\\*{0,2}(?:${label})\\*{0,2}\\s*[:：]\\s*\\*{0,2}([^\\n*]+)`, 'mi');
+                  return block.match(pattern)?.[1]?.trim() || '';
+              };
+              const fieldUntilNext = (number, label, nextNumber) => {
+                  const pattern = new RegExp(`^\\s*(?:[-•]\\s*)?\\*{0,2}${number}[.)]\\s*\\*{0,2}(?:${label})\\*{0,2}\\s*[:：]\\s*\\*{0,2}([\\s\\S]*?)\\s*\\*{0,2}\\s*(?=^\\s*(?:[-•]\\s*)?\\*{0,2}${nextNumber}[.)])`, 'mi');
+                  return block.match(pattern)?.[1]?.trim() || '';
+              };
+              const transferNo = field(1, '이관번호');
+              const hospitalName = fieldUntilNext(2, '병원명', 3);
+              const device = field(3, '(?:Serial\\s*No\\.?|S\\s*\\/?\\s*N|시리얼(?:\\s*번호)?)\\s*\\/\\s*Size');
+              const receivedRaw = field(5, '접수시간').replace(/\s*\(편집됨\)\s*$/, '').trim();
+              const receivedDate = receivedRaw.match(/\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/)?.[0]?.replace(/[/.]/g, '-');
+              const slackTimes = [...context.matchAll(/(?:\\?\[|【)?[\s\u200b]*(오전|오후)[\s\u00a0\u200b]*(\d{1,2}):(\d{2})(?:[\s\u200b]*(?:\\?\]|】))?/gi)];
+              const slackTime = slackTimes.at(-1);
+              let receivedAt = receivedRaw;
+              if (receivedDate && slackTime) {
+                  let hour = Number(slackTime[2]) % 12;
+                  if (slackTime[1] === '오후') hour += 12;
+                  receivedAt = `${receivedDate}T${String(hour).padStart(2, '0')}:${slackTime[3]}:00`;
+              } else if (receivedDate) receivedAt = receivedRaw;
+              const description = block.match(/^\s*(?:[-•]\s*)?\*{0,2}4[.)]\s*\*{0,2}문의사항\*{0,2}\s*[:：]\s*\*{0,2}([\s\S]*?)(?=^\s*(?:[-•]\s*)?\*{0,2}5[.)]\s*\*{0,2}접수시간)/mi)?.[1]?.trim() || '';
+              const deviceParts = device.split('/').map(value => value.trim());
+              const serialNo = (deviceParts[0] || '').toUpperCase();
+              const size = deviceParts[1]?.match(/\d{1,2}/)?.[0] || '';
+              let [categoryMain, categorySub, summary] = classifySlackDescription(description);
+              if (bpProfile) {
+                  if (categoryMain === '리포트 이슈') categoryMain = '데이터 이슈';
+                  const available = categoryMap[categoryMain];
+                  if (!available) {
+                      categoryMain = '기타';
+                      categorySub = '기타'
+                  } else if (categorySub && !available.includes(categorySub)) {
+                      categorySub = available.includes('기타') ? '기타' : ''
+                  }
+              }
+              return {
+                  transfer_no: transferNo,
+                  cx_transfer: /@(hwihyun\.kim|wondong\.yang)\b/i.test(context) ? 'O' : '',
+                  ...(bpProfile ? {} : {
+                      hospital_name: hospitalName
+                  }),
+                  category_main: categoryMain,
+                  category_sub: categorySub,
+                  description: summary,
+                  received_at: receivedAt,
+                  serial_no: serialNo,
+                  size
+              };
+          }).filter(item => item.transfer_no && (bpProfile || item.hospital_name) && item.received_at);
+      }
+  </script>
+{% endblock %}

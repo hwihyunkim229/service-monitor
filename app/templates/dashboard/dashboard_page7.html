@@ -1,0 +1,2062 @@
+{% extends "base.html" %}
+{% block page_name %}운영 대시보드 · 불량 분석{% endblock %}
+{% block content %}
+  {% set hero_eyebrow = "QUALITY INTELLIGENCE" %}
+  {% set hero_title = "불량 분석 통계" %}
+  {% set hero_description = "CX 원인부터 품질 판정과 연구소 분석까지 불량 흐름을 한 화면에서 확인합니다." %}
+  {% set hero_badge = product|default("") %}
+  {% include "dashboard/_dashboard_hero.html" %}
+  <style>
+      :root {
+          --ink: #16213d;
+          --muted: #70809f;
+          --line: #e8edf5;
+          --blue: #4f6ef7;
+          --violet: #8067e8;
+          --cyan: #27b9d6;
+          --green: #20b486;
+          --red: #ef6670;
+          --surface: #fff;
+          --soft: #f5f7fb
+      }
+
+      .defect-dashboard {
+          margin: -10px;
+          padding: 10px;
+          background: linear-gradient(180deg, #f6f8fc 0, #fff 500px);
+          min-height: 100vh;
+          color: var(--ink)
+      }
+
+      .hero {
+          position: relative;
+          overflow: hidden;
+          border-radius: 22px;
+          padding: 28px 30px 24px;
+          margin-bottom: 20px;
+          background: linear-gradient(125deg, #243a77 0%, #4f6ef7 55%, #7c65db 100%);
+          box-shadow: 0 18px 40px rgba(55, 78, 155, .22);
+          color: #fff
+      }
+
+      .hero:before,
+      .hero:after {
+          content: "";
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none
+      }
+
+      .hero:before {
+          width: 290px;
+          height: 290px;
+          right: -70px;
+          top: -160px;
+          background: rgba(255, 255, 255, .12)
+      }
+
+      .hero:after {
+          width: 190px;
+          height: 190px;
+          right: 150px;
+          bottom: -155px;
+          border: 34px solid rgba(255, 255, 255, .08)
+      }
+
+      .hero-top {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          justify-content: space-between;
+          gap: 30px;
+          align-items: flex-start
+      }
+
+      .eyebrow {
+          font-size: 11px;
+          letter-spacing: .16em;
+          font-weight: 750;
+          color: #cdd7ff;
+          margin-bottom: 8px
+      }
+
+      .hero h2 {
+          font-size: 28px;
+          margin: 0;
+          font-weight: 780;
+          letter-spacing: -.04em
+      }
+
+      .hero-copy {
+          margin: 8px 0 0;
+          color: #dce4ff;
+          font-size: 13px;
+          line-height: 1.65
+      }
+
+      .hero-badge {
+          flex: none;
+          padding: 8px 12px;
+          border: 1px solid rgba(255, 255, 255, .22);
+          border-radius: 999px;
+          background: rgba(255, 255, 255, .12);
+          backdrop-filter: blur(8px);
+          font-size: 11px;
+          color: #eef2ff
+      }
+
+      .filter-panel {
+          position: relative;
+          z-index: 1;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1.25fr 1.45fr auto auto;
+          gap: 9px;
+          align-items: end;
+          margin-top: 24px;
+          padding: 13px;
+          border: 1px solid rgba(255, 255, 255, .18);
+          border-radius: 14px;
+          background: rgba(12, 28, 78, .18);
+          backdrop-filter: blur(9px)
+      }
+
+      .filter-field {
+          display: flex;
+          flex-direction: column;
+          gap: 5px
+      }
+
+      .filter-field label {
+          font-size: 10px;
+          font-weight: 700;
+          color: #cdd8ff
+      }
+
+      .filter-field input,
+      .filter-field select {
+          width: 100%;
+          height: 36px;
+          border: 1px solid rgba(255, 255, 255, .28);
+          border-radius: 9px;
+          padding: 0 10px;
+          background: rgba(255, 255, 255, .96);
+          color: #263452;
+          font-size: 12px;
+          outline: none
+      }
+
+      .filter-field input:focus,
+      .filter-field select:focus {
+          box-shadow: 0 0 0 3px rgba(255, 255, 255, .18);
+          border-color: #fff
+      }
+
+      .filter-button,
+      .reset-button {
+          height: 36px;
+          border-radius: 9px;
+          padding: 0 15px;
+          font-size: 12px;
+          font-weight: 750;
+          white-space: nowrap
+      }
+
+      .filter-button {
+          border: 0;
+          background: #fff;
+          color: #4059d4;
+          box-shadow: 0 5px 14px rgba(10, 25, 70, .18);
+          cursor: pointer
+      }
+
+      .progress-dashboard {
+          margin: 18px 0;
+          padding: 20px;
+          overflow-x: auto;
+          border: 1px solid var(--line);
+          border-radius: 18px;
+          background: #fff;
+          box-shadow: 0 10px 28px rgba(39, 58, 100, .07)
+      }
+
+      .progress-head,
+      .progress-view-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px
+      }
+
+      .progress-head h3,
+      .progress-view-head h4 {
+          margin: 0;
+          color: var(--ink)
+      }
+
+      .progress-head p,
+      .progress-view-head p {
+          margin: 5px 0 0;
+          color: var(--muted);
+          font-size: 12px
+      }
+
+      .progress-filter {
+          display: flex;
+          align-items: end;
+          gap: 8px
+      }
+
+      .progress-filter label {
+          display: grid;
+          gap: 4px;
+          color: #6d7b92;
+          font-size: 10px;
+          font-weight: 800
+      }
+
+      .progress-filter select {
+          min-width: 120px;
+          height: 34px;
+          border: 1px solid #dbe3ef;
+          border-radius: 9px;
+          padding: 0 28px 0 10px;
+          background: #fff;
+          color: #293a58;
+          font-size: 12px;
+          font-weight: 750
+      }
+
+      .weekly-progress-chart {
+          height: 250px;
+          margin-top: 16px;
+          padding: 12px 10px 4px;
+          border: 1px solid #e5eaf0;
+          border-radius: 14px;
+          background: #fbfcfd
+      }
+
+      .weekly-progress-note {
+          margin: 10px 0 0;
+          color: #7a8799;
+          font-size: 10px;
+          text-align: right
+      }
+
+      .weekly-progress-table-wrap {
+          margin-top: 12px;
+          overflow-x: auto;
+          border: 1px solid #e2e7ed;
+          border-radius: 12px
+      }
+
+      .weekly-progress-table {
+          width: 100%;
+          min-width: 780px;
+          border-collapse: collapse;
+          font-size: 13px
+      }
+
+      .weekly-progress-table th,
+      .weekly-progress-table td {
+          padding: 12px 13px;
+          border-right: 1px solid #edf0f4;
+          border-bottom: 1px solid #edf0f4;
+          text-align: center;
+          white-space: nowrap
+      }
+
+      .weekly-progress-table thead th {
+          background: #f5f7fa;
+          color: #47566c;
+          font-weight: 850
+      }
+
+      .weekly-progress-table tbody th {
+          background: #fafbfd;
+          color: #526174;
+          text-align: left
+      }
+
+      .weekly-progress-table tbody td {
+          background: #fff;
+          color: #344256
+      }
+
+      .weekly-progress-table tr:last-child th,
+      .weekly-progress-table tr:last-child td {
+          border-bottom: 0
+      }
+
+      .weekly-progress-table th:last-child,
+      .weekly-progress-table td:last-child {
+          border-right: 0
+      }
+
+      .weekly-progress-table tr.rate-row td,
+      .weekly-progress-table tr.rate-row th {
+          font-weight: 800
+      }
+
+      .progress-matrix,
+      .rev-progress-table {
+          width: 100%;
+          min-width: 720px;
+          margin-top: 16px;
+          border-collapse: separate;
+          border-spacing: 0;
+          overflow: hidden;
+          border: 1px solid var(--line);
+          border-radius: 13px;
+          font-size: 13px
+      }
+
+      .progress-matrix th,
+      .progress-matrix td,
+      .rev-progress-table th,
+      .rev-progress-table td {
+          padding: 11px 12px;
+          border-right: 1px solid var(--line);
+          border-bottom: 1px solid var(--line);
+          text-align: center;
+          white-space: nowrap
+      }
+
+      .progress-matrix th:last-child,
+      .progress-matrix td:last-child,
+      .rev-progress-table th:last-child,
+      .rev-progress-table td:last-child {
+          border-right: 0
+      }
+
+      .progress-matrix tr:last-child td,
+      .rev-progress-table tr:last-child td {
+          border-bottom: 0
+      }
+
+      .progress-matrix thead th,
+      .rev-progress-table thead th {
+          background: #f3f6fb;
+          color: #52627d;
+          font-weight: 800
+      }
+
+      .progress-matrix tbody th {
+          background: #fafbfd;
+          color: #64718a;
+          text-align: left
+      }
+
+      .progress-matrix strong {
+          color: #304dc6;
+          font-size: 15px
+      }
+
+      .progress-matrix .remaining strong {
+          color: #e05d68
+      }
+
+      .progress-view-head {
+          margin-top: 22px
+      }
+
+      .progress-tabs {
+          display: flex;
+          gap: 6px;
+          padding: 4px;
+          border-radius: 10px;
+          background: #f1f4f9
+      }
+
+      .progress-tab {
+          border: 0;
+          border-radius: 8px;
+          padding: 7px 12px;
+          background: transparent;
+          color: #66748d;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer
+      }
+
+      .progress-tab.active {
+          background: #fff;
+          color: #4059d4;
+          box-shadow: 0 3px 10px rgba(45, 64, 110, .12)
+      }
+
+      .rev-progress-view[hidden] {
+          display: none
+      }
+
+      .rev-progress-view {
+          overflow-x: auto
+      }
+
+      .rev-progress-table td:first-child {
+          text-align: left;
+          font-weight: 800;
+          color: #253553
+      }
+
+      .rev-progress-value {
+          display: block;
+          color: #263756;
+          font-weight: 800
+      }
+
+      .rev-progress-rate {
+          display: block;
+          margin-top: 2px;
+          color: #7a88a1;
+          font-size: 10px
+      }
+
+      .progress-empty {
+          padding: 24px;
+          color: var(--muted);
+          text-align: center
+      }
+
+      .rev-overview-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 16px;
+          margin: 18px 0
+      }
+
+      .rev-overview-card {
+          overflow: hidden;
+          border: 1px solid var(--line);
+          border-radius: 16px;
+          background: #fff;
+          box-shadow: 0 8px 24px rgba(39, 58, 100, .055)
+      }
+
+      .rev-overview-head {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+          align-items: center;
+          padding: 16px 18px;
+          border-bottom: 1px solid var(--line);
+          background: #fafbfd
+      }
+
+      .rev-overview-head h3 {
+          margin: 0;
+          color: var(--ink);
+          font-size: 15px
+      }
+
+      .rev-overview-head p {
+          margin: 4px 0 0;
+          color: var(--muted);
+          font-size: 11px
+      }
+
+      .rev-overview-head span {
+          color: #71809a;
+          font-size: 10px;
+          font-weight: 800
+      }
+
+      .rev-overview-scroll {
+          overflow-x: auto
+      }
+
+      .rev-overview-table {
+          width: 100%;
+          min-width: 860px;
+          border-collapse: collapse;
+          font-size: 13px
+      }
+
+      .rev-overview-table th,
+      .rev-overview-table td {
+          padding: 12px 13px;
+          border-bottom: 1px solid #edf0f4;
+          text-align: center;
+          white-space: nowrap
+      }
+
+      .rev-overview-table th {
+          background: #fff;
+          color: #65738b;
+          font-size: 12px;
+          font-weight: 800
+      }
+
+      .rev-overview-table th:first-child,
+      .rev-overview-table td:first-child {
+          text-align: left
+      }
+
+      .rev-overview-table td:first-child {
+          color: #263756;
+          font-weight: 850
+      }
+
+      .rev-overview-table tbody tr:hover {
+          background: #f8fafc
+      }
+
+      .rev-overview-table .rate {
+          color: #284f8f;
+          font-weight: 800
+      }
+
+      .rev-overview-table .defect {
+          color: #c44955;
+          font-weight: 800
+      }
+
+      .rev-overview-table .waiting {
+          color: #b76a22;
+          font-weight: 800
+      }
+
+      .rev-report {
+          display: grid;
+          grid-template-columns: minmax(180px, .72fr) minmax(0, 1.65fr);
+          gap: 18px;
+          min-height: 250px;
+          padding: 18px;
+          border: 1px solid #dfe7ee;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #f7fbfc 0%, #fff 58%)
+      }
+
+      .rev-score {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          padding: 18px;
+          border: 1px solid #d9e8eb;
+          border-radius: 13px;
+          background: linear-gradient(145deg, #eef8f9, #f8fbfc);
+          color: #173b4e;
+          box-shadow: none
+      }
+
+      .rev-score-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px
+      }
+
+      .rev-score-head span {
+          font-size: 11px;
+          font-weight: 750;
+          letter-spacing: .08em;
+          color: #5d8290
+      }
+
+      .rev-score-head strong {
+          padding: 5px 9px;
+          border: 1px solid #c8e1e5;
+          border-radius: 999px;
+          background: #fff;
+          color: #176779;
+          font-size: 13px
+      }
+
+      .rev-score-main span {
+          display: block;
+          margin-bottom: 4px;
+          color: #66808b;
+          font-size: 11px;
+          font-weight: 700
+      }
+
+      .rev-score-main strong {
+          font-size: 39px;
+          line-height: 1;
+          font-weight: 850;
+          letter-spacing: -.05em;
+          color: #176f7d
+      }
+
+      .rev-score-main small {
+          margin-left: 4px;
+          color: #52727e;
+          font-size: 12px;
+          font-weight: 700
+      }
+
+      .rev-score-foot {
+          display: flex;
+          justify-content: space-between;
+          gap: 10px;
+          padding-top: 12px;
+          border-top: 1px solid #d6e6e9;
+          font-size: 11px;
+          color: #627985
+      }
+
+      .rev-score-foot b {
+          color: #173b4e;
+          font-size: 13px
+      }
+
+      .rev-report-body {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 16px
+      }
+
+      .rev-report-title {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px
+      }
+
+      .rev-report-title strong {
+          display: block;
+          color: #183248;
+          font-size: 17px
+      }
+
+      .rev-report-title span {
+          display: block;
+          margin-top: 5px;
+          color: #77869a;
+          font-size: 11px
+      }
+
+      .rev-report-title em {
+          font-style: normal;
+          padding: 6px 9px;
+          border-radius: 7px;
+          background: #edf5f7;
+          color: #176779;
+          font-size: 10px;
+          font-weight: 800
+      }
+
+      .rev-process {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 9px
+      }
+
+      .rev-process-item {
+          position: relative;
+          min-width: 0;
+          padding: 13px;
+          border: 1px solid #e3e9ef;
+          border-radius: 11px;
+          background: #fff
+      }
+
+      .rev-process-item:not(:last-child)::after {
+          position: absolute;
+          top: 50%;
+          right: -10px;
+          z-index: 2;
+          width: 10px;
+          height: 2px;
+          background: #cbd8df;
+          content: ""
+      }
+
+      .rev-process-item span {
+          display: block;
+          color: #758398;
+          font-size: 10px;
+          font-weight: 700
+      }
+
+      .rev-process-item strong {
+          display: block;
+          margin-top: 5px;
+          color: #183248;
+          font-size: 22px;
+          letter-spacing: -.04em
+      }
+
+      .rev-process-item small {
+          display: block;
+          margin-top: 3px;
+          color: #8a97a7;
+          font-size: 9px
+      }
+
+      .rev-process-item.alert strong {
+          color: #d94f5c
+      }
+
+      .rev-rates {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px
+      }
+
+      .rev-rate {
+          padding: 11px 13px;
+          border-radius: 10px;
+          background: #f4f7f9
+      }
+
+      .rev-rate-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 8px;
+          color: #526277;
+          font-size: 11px;
+          font-weight: 750
+      }
+
+      .rev-rate-head strong {
+          color: #173b4e;
+          font-size: 15px
+      }
+
+      .rev-rate-track {
+          height: 7px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #dde7eb
+      }
+
+      .rev-rate-track i {
+          display: block;
+          width: var(--rate);
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #1c91a5, #35b5bd)
+      }
+
+      .rev-rate.defect .rev-rate-track i {
+          background: linear-gradient(90deg, #ed8b72, #dc5663)
+      }
+
+      .rev-local-filter {
+          display: flex;
+          align-items: center;
+          gap: 7px
+      }
+
+      .rev-local-filter label {
+          color: #748397;
+          font-size: 10px;
+          font-weight: 750
+      }
+
+      .rev-local-filter select {
+          height: 31px;
+          min-width: 92px;
+          padding: 0 28px 0 10px;
+          border: 1px solid #d8e2e8;
+          border-radius: 8px;
+          background: #fff;
+          color: #254356;
+          font-size: 11px;
+          font-weight: 750
+      }
+
+      .rev-visual {
+          grid-column: 1/-1;
+          padding: 15px 16px;
+          border: 1px solid #e2e9ee;
+          border-radius: 12px;
+          background: #fff
+      }
+
+      .rev-visual-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px
+      }
+
+      .rev-visual-head strong {
+          color: #294156;
+          font-size: 12px
+      }
+
+      .rev-visual-head span {
+          color: #8190a1;
+          font-size: 10px
+      }
+
+      .rev-flow-bars {
+          display: grid;
+          gap: 8px
+      }
+
+      .rev-flow-row {
+          display: grid;
+          grid-template-columns: 76px minmax(0, 1fr) 52px;
+          align-items: center;
+          gap: 10px
+      }
+
+      .rev-flow-row>span {
+          color: #5c6e82;
+          font-size: 10px;
+          font-weight: 750
+      }
+
+      .rev-flow-row>b {
+          text-align: right;
+          color: #294156;
+          font-size: 11px
+      }
+
+      .rev-flow-track {
+          height: 18px;
+          overflow: hidden;
+          border-radius: 6px;
+          background: #edf2f5
+      }
+
+      .rev-flow-track i {
+          display: block;
+          width: max(var(--flow), 3px);
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #79c4cf, #2a97a9)
+      }
+
+      .rev-flow-row:nth-child(3) .rev-flow-track i {
+          background: linear-gradient(90deg, #91b8df, #5c83be)
+      }
+
+      .rev-flow-row:nth-child(4) .rev-flow-track i {
+          background: linear-gradient(90deg, #efaa99, #dd6670)
+      }
+
+      @media(max-width:1000px) {
+          .rev-report {
+              grid-template-columns: 1fr
+          }
+
+          .rev-score {
+              min-height: 190px
+          }
+
+          .filter-panel {
+              grid-template-columns: repeat(2, 1fr)
+          }
+      }
+
+      .reset-button {
+          display: flex;
+          align-items: center;
+          text-decoration: none;
+          border: 1px solid rgba(255, 255, 255, .34);
+          color: #fff;
+          background: rgba(255, 255, 255, .1)
+      }
+
+      .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 13px;
+          margin-bottom: 20px
+      }
+
+      .kpi-card {
+          position: relative;
+          overflow: hidden;
+          background: var(--surface);
+          border: 1px solid var(--line);
+          border-radius: 16px;
+          padding: 17px 18px;
+          box-shadow: 0 8px 24px rgba(40, 57, 93, .06);
+          transition: transform .2s ease, box-shadow .2s ease
+      }
+
+      .kpi-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 13px 28px rgba(40, 57, 93, .11)
+      }
+
+      .kpi-accent {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: 0;
+          height: 3px;
+          background: var(--accent)
+      }
+
+      .kpi-icon {
+          width: max-content;
+          min-width: 42px;
+          height: 30px;
+          padding: 0 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9px;
+          background: color-mix(in srgb, var(--accent) 12%, white);
+          color: var(--accent);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: -.02em
+      }
+
+      .kpi-value {
+          font-size: 28px;
+          font-weight: 800;
+          letter-spacing: -.04em;
+          margin-top: 12px;
+          color: var(--ink)
+      }
+
+      .kpi-label {
+          font-size: 12px;
+          color: #5e6d89;
+          font-weight: 650;
+          margin-top: 2px
+      }
+
+      .kpi-meta {
+          font-size: 10px;
+          color: #93a0b7;
+          margin-top: 7px;
+          line-height: 1.45
+      }
+
+      .kpi-meta.warning {
+          color: #d97706;
+          font-weight: 700
+      }
+
+      .insight {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          padding: 14px 17px;
+          margin-bottom: 20px;
+          border: 1px solid #dce5ff;
+          border-radius: 14px;
+          background: linear-gradient(90deg, #f0f4ff, #fafbff);
+          box-shadow: 0 4px 16px rgba(55, 78, 155, .04)
+      }
+
+      .insight-mark {
+          width: 35px;
+          height: 35px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 11px;
+          background: #4f6ef7;
+          color: #fff;
+          font-size: 18px
+      }
+
+      .insight-text {
+          font-size: 12px;
+          color: #60708e
+      }
+
+      .insight-text strong {
+          font-size: 15px;
+          color: #2b3d72;
+          margin: 0 5px
+      }
+
+      .insight-rule {
+          margin-left: auto;
+          font-size: 10px;
+          color: #8492aa;
+          background: #fff;
+          border: 1px solid #e1e7f1;
+          border-radius: 999px;
+          padding: 5px 9px
+      }
+
+      .chart-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 18px
+      }
+
+      .chart-card {
+          background: #fff;
+          border: 1px solid var(--line);
+          border-radius: 18px;
+          padding: 19px 20px 20px;
+          box-shadow: 0 9px 26px rgba(40, 57, 93, .06);
+          min-width: 0
+      }
+
+      .card-head {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px
+      }
+
+      .step {
+          display: inline-flex;
+          width: 24px;
+          height: 24px;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          background: #eef2ff;
+          color: #4f6ef7;
+          font-size: 11px;
+          font-weight: 800;
+          margin-right: 8px
+      }
+
+      .card-title {
+          display: flex;
+          align-items: center;
+          font-size: 15px;
+          font-weight: 760;
+          color: #1c2945
+      }
+
+      .card-help {
+          font-size: 10px;
+          color: #a0aabd;
+          border: 1px solid #e5eaf2;
+          background: #fafbfc;
+          border-radius: 999px;
+          padding: 4px 8px
+      }
+
+      .card-note {
+          font-size: 11px;
+          line-height: 1.55;
+          color: #8491a9;
+          margin: 0 0 14px
+      }
+
+      .chart-wrap {
+          height: 330px;
+          position: relative
+      }
+
+      .empty-state {
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
+          border: 1px dashed #dce3ee;
+          border-radius: 14px;
+          background: linear-gradient(145deg, #fbfcfe, #f5f7fb);
+          color: #8b98ae
+      }
+
+      .empty-icon {
+          width: 54px;
+          height: 54px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 18px;
+          background: #edf1f7;
+          color: #93a0b5;
+          font-size: 23px;
+          margin-bottom: 12px
+      }
+
+      .empty-state strong {
+          font-size: 13px;
+          color: #526079;
+          margin-bottom: 5px
+      }
+
+      .empty-state span {
+          font-size: 11px
+      }
+
+      .guide {
+          grid-column: 1/-1;
+          display: grid;
+          grid-template-columns: auto repeat(3, 1fr);
+          align-items: stretch;
+          gap: 0;
+          background: #fff;
+          border: 1px solid var(--line);
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 8px 24px rgba(40, 57, 93, .05)
+      }
+
+      .guide-title {
+          display: flex;
+          align-items: center;
+          padding: 16px 18px;
+          background: #f3f6fc;
+          color: #314363;
+          font-size: 12px;
+          font-weight: 760
+      }
+
+      .guide-item {
+          padding: 14px 17px;
+          border-left: 1px solid var(--line)
+      }
+
+      .guide-item strong {
+          display: block;
+          font-size: 11px;
+          color: #354560;
+          margin-bottom: 4px
+      }
+
+      .guide-item span {
+          font-size: 10px;
+          line-height: 1.5;
+          color: #8491a7
+      }
+
+      .donut-layout {
+          height: 330px;
+          display: grid;
+          grid-template-columns: minmax(220px, 42%) minmax(240px, 1fr);
+          align-items: center;
+          gap: 20px
+      }
+
+      .donut-canvas {
+          height: 270px;
+          position: relative
+      }
+
+      .chart-legend {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 8px 12px;
+          align-content: center
+      }
+
+      .legend-item {
+          display: grid;
+          grid-template-columns: 10px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 7px;
+          min-height: 31px;
+          padding: 6px 8px;
+          border: 1px solid #e5eaf2;
+          border-radius: 9px;
+          background: #fbfcfe
+      }
+
+      .legend-dot {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: var(--dot)
+      }
+
+      .legend-name {
+          font-size: 11px;
+          font-weight: 750;
+          color: #273550;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis
+      }
+
+      .legend-value {
+          text-align: right
+      }
+
+      .legend-value strong {
+          display: block;
+          font-size: 11px;
+          color: #101a33
+      }
+
+      .legend-value small {
+          display: block;
+          font-size: 9px;
+          color: #748199;
+          margin-top: 1px
+      }
+
+      @media(max-width:1200px) {
+          .filter-panel {
+              grid-template-columns: repeat(3, 1fr)
+          }
+
+          .kpi-grid {
+              grid-template-columns: repeat(3, 1fr)
+          }
+
+          .donut-layout {
+              grid-template-columns: minmax(210px, 38%) 1fr
+          }
+      }
+
+      @media(max-width:950px) {
+          .chart-grid {
+              grid-template-columns: 1fr
+          }
+
+          .guide {
+              grid-column: auto;
+              grid-template-columns: 1fr
+          }
+
+          .guide-item {
+              border-left: 0;
+              border-top: 1px solid var(--line)
+          }
+      }
+
+      @media(max-width:700px) {
+          .hero {
+              padding: 22px 18px
+          }
+
+          .hero-top {
+              flex-direction: column;
+              gap: 10px
+          }
+
+          .filter-panel {
+              grid-template-columns: 1fr
+          }
+
+          .kpi-grid {
+              grid-template-columns: repeat(2, 1fr)
+          }
+
+          .donut-layout {
+              height: auto;
+              grid-template-columns: 1fr
+          }
+
+          .donut-canvas {
+              height: 250px
+          }
+
+          .chart-legend {
+              grid-template-columns: 1fr
+          }
+      }
+  </style>
+  <div class="defect-dashboard">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="eyebrow">QUALITY INTELLIGENCE</div>
+          <h2>불량 분석 통계</h2>
+          <p class="hero-copy">CX에서 발견한 원인이 품질과 연구소 분석으로 어떻게 이어지는지 한눈에 확인합니다.</p>
+        </div>
+        <div class="hero-badge">{{ filter_start }} — {{ filter_end }}</div>
+      </div>
+      <form class="filter-panel" method="get">
+        <input type="hidden" name="page" value="7">
+        <input type="hidden" name="year" value="{{ dashboard_year_param }}">
+        <input type="hidden" name="hw_rev" value="{{ selected_hw_rev }}">
+        <div class="filter-field">
+          <label>접수 시작일</label>
+          <input type="date" name="start" value="{{ filter_start }}">
+        </div>
+        <div class="filter-field">
+          <label>접수 종료일</label>
+          <input type="date" name="end" value="{{ filter_end }}">
+        </div>
+        <div class="filter-field">
+          <label>분석 대상</label>
+          <select name="scope">
+            <option value="all" {% if scope == 'all' %}selected{% endif %}>전체 CX 접수</option>
+            <option value="exchange" {% if scope == 'exchange' %}selected{% endif %}>교품·Cradle 교품</option>
+          </select>
+        </div>
+        <div class="filter-field">
+          <label>세부 원인 기준</label>
+          <select name="issue">
+            {% for issue in issue_options %}
+              <option value="{{ issue }}"
+                      {% if issue == selected_issue %}selected{% endif %}>{{ issue }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="filter-button" type="submit">적용</button>
+        <a class="reset-button"
+           href="?page=7&amp;year={{ dashboard_year_param }}">초기화</a>
+      </form>
+    </section>
+    <section class="kpi-grid">
+      <div class="kpi-card" style="--accent:#4f6ef7">
+        <div class="kpi-accent"></div>
+        <div class="kpi-icon">대상</div>
+        <div class="kpi-value">{{ total_cases }}</div>
+        <div class="kpi-label">분석 대상</div>
+        <div class="kpi-meta">선택 기간 CX 접수 케이스</div>
+      </div>
+      <div class="kpi-card" style="--accent:#8067e8">
+        <div class="kpi-accent"></div>
+        <div class="kpi-icon">원인</div>
+        <div class="kpi-value">{{ cause_occurrences }}</div>
+        <div class="kpi-label">등록 원인 수</div>
+        <div class="kpi-meta">원인1 + 원인2 발생 합계</div>
+      </div>
+      <div class="kpi-card" style="--accent:#27b9d6">
+        <div class="kpi-accent"></div>
+        <div class="kpi-icon">복수</div>
+        <div class="kpi-value">{{ multi_cause_cases }}</div>
+        <div class="kpi-label">복수 원인 케이스</div>
+        <div class="kpi-meta">원인1·원인2가 모두 입력 · {{ multi_cause_rate }}%</div>
+      </div>
+      <div class="kpi-card" style="--accent:#20b486">
+        <div class="kpi-accent"></div>
+        <div class="kpi-icon">품질</div>
+        <div class="kpi-value">{{ quality_judged }}</div>
+        <div class="kpi-label">품질 판정 완료</div>
+        <div class="kpi-meta">품질 등록 {{ quality_rows }}건 중 완료 {{ quality_judged_rate }}%</div>
+      </div>
+      <div class="kpi-card" style="--accent:#ef6670">
+        <div class="kpi-accent"></div>
+        <div class="kpi-icon">연구</div>
+        <div class="kpi-value">{{ lab_completed }}</div>
+        <div class="kpi-label">연구소 분석 완료</div>
+        <div class="kpi-meta {% if lab_completed == 0 %}warning{% endif %}">연구소 등록 {{ lab_rows }}건 중 완료</div>
+      </div>
+    </section>
+    <div class="insight">
+      <div class="insight-mark">↗</div>
+      <div class="insight-text">가장 많이 등록된 원인은 <strong>{{ top_issue_label }}</strong>이며 {{ top_issue_count }}회, 전체 원인의 {{ top_issue_rate }}%입니다.</div>
+      <div class="insight-rule">원인 발생 기준</div>
+    </div>
+    <section class="progress-dashboard" aria-label="품질 업무 진척도">
+      <div class="progress-head">
+        <div>
+          <h3>{{ selected_progress_rev or 'Rev 미선택' }} 주차별 품질 현황</h3>
+          <p>등록 기기 수와 접수율은 제외하고, 접수 이후 회수 및 HW 불량 추이를 표시합니다.</p>
+        </div>
+        <form class="progress-filter" method="get">
+          <input type="hidden" name="page" value="7">
+          <input type="hidden" name="year" value="{{ dashboard_year_param }}">
+          <input type="hidden" name="start" value="{{ filter_start }}">
+          <input type="hidden" name="end" value="{{ filter_end }}">
+          <input type="hidden" name="scope" value="{{ scope }}">
+          <input type="hidden" name="issue" value="{{ selected_issue }}">
+          <input type="hidden" name="hw_rev" value="{{ selected_hw_rev }}">
+          <label>
+            Rev 기준<select name="rev_mode" onchange="this.form.submit()">
+            <option value="hw" {% if progress_rev_mode == 'hw' %}selected{% endif %}>HW Rev</option>
+            <option value="process"
+                    {% if progress_rev_mode == 'process' %}selected{% endif %}>공정 Rev</option>
+            </select>
+          </label>
+          <label>
+            Rev 선택<select name="progress_rev" onchange="this.form.submit()">
+            {% for rev in progress_rev_options %}
+              <option value="{{ rev }}"
+                      {% if rev == selected_progress_rev %}selected{% endif %}>{{ rev }}</option>
+            {% endfor %}
+            </select>
+          </label>
+        </form>
+      </div>
+      {% if selected_progress_rev and weekly_progress.labels %}
+        <div class="weekly-progress-chart">
+          <canvas id="qualityWeeklyProgressChart">
+          </canvas>
+        </div>
+        <p class="weekly-progress-note">누적값 기준 최근 {{ weekly_progress.labels|length }}주{% if weekly_progress.omitted_weeks %} · 이전 {{ weekly_progress.omitted_weeks }}주는 차트에서 생략{% endif %}
+        </p>
+        <div class="weekly-progress-table-wrap">
+          <table class="weekly-progress-table">
+            <thead>
+              <tr>
+                <th>구분</th>
+                {% for label in weekly_progress.labels %}
+                  <th>{{ label }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>접수 기기 수</th>
+                {% for value in weekly_progress.received %}
+                  <td>{{ value }}</td>
+                {% endfor %}
+              </tr>
+              <tr>
+                <th>회수 기기 수</th>
+                {% for value in weekly_progress.recovered %}
+                  <td>{{ value }}</td>
+                {% endfor %}
+              </tr>
+              <tr class="rate-row">
+                <th>회수율</th>
+                {% for value in weekly_progress.recovery_rates %}
+                  <td>{{ value }}%</td>
+                {% endfor %}
+              </tr>
+              <tr>
+                <th>HW 불량확정 기기 수</th>
+                {% for value in weekly_progress.defects %}
+                  <td>{{ value }}</td>
+                {% endfor %}
+              </tr>
+              <tr class="rate-row">
+                <th>HW 불량률</th>
+                {% for value in weekly_progress.defect_rates %}
+                  <td>{{ value }}%</td>
+                {% endfor %}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="progress-empty">선택 기간의 Rev 데이터가 없습니다.</div>
+      {% endif %}
+      <div class="progress-view-head">
+        <div>
+          <h4>업무 진척도</h4>
+          <p>{{ selected_progress_rev }} 대상 건의 단계별 처리 현황입니다.</p>
+        </div>
+      </div>
+      <table class="progress-matrix">
+        <thead>
+          <tr>
+            <th>구분</th>
+            {% for stage in selected_progress_summary %}
+              <th>{{ stage.label }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="remaining">
+            <th>잔여 건 수</th>
+            {% for stage in selected_progress_summary %}
+              <td>
+                <strong>{{ stage.remaining }}</strong>건
+              </td>
+            {% endfor %}
+          </tr>
+          <tr>
+            <th>완료 건 수</th>
+            {% for stage in selected_progress_summary %}
+              <td>
+                <strong>{{ stage.completed }}</strong>건
+              </td>
+            {% endfor %}
+          </tr>
+          <tr>
+            <th>전체 건 수</th>
+            {% for stage in selected_progress_summary %}
+              <td>{{ stage.total }}건</td>
+            {% endfor %}
+          </tr>
+          <tr>
+            <th>진척률</th>
+            {% for stage in selected_progress_summary %}
+              <td>
+                <strong>{{ stage.rate }}%</strong>
+              </td>
+            {% endfor %}
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="rev-overview-grid" aria-label="Rev별 품질 지표 전체 비교">
+      {% for title, description, rows in [('HW Rev별 품질 현황', 'HW Rev 전체의 접수·회수·불량 및 업무 진척을 비교합니다.', hw_rev_overview), ('공정 Rev별 품질 현황', '공정 Rev 전체의 접수·회수·불량 및 업무 진척을 비교합니다.', process_rev_overview)] %}
+        <article class="rev-overview-card">
+          <div class="rev-overview-head">
+            <div>
+              <h3>{{ title }}</h3>
+              <p>{{ description }}</p>
+            </div>
+            <span>등록 기기 수 제외 · 접수 기준</span>
+          </div>
+          <div class="rev-overview-scroll">
+            <table class="rev-overview-table">
+              <thead>
+                <tr>
+                  <th>Rev</th>
+                  <th>접수</th>
+                  <th>회수</th>
+                  <th>미회수</th>
+                  <th>회수율</th>
+                  <th>품질 검토</th>
+                  <th>검토 대기</th>
+                  <th>HW 불량</th>
+                  <th>불량률</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rev in rows %}
+                  <tr>
+                    <td>{{ rev.rev }}</td>
+                    <td>{{ rev.received }}</td>
+                    <td>{{ rev.recovered }}</td>
+                    <td class="waiting">{{ rev.waiting_return }}</td>
+                    <td class="rate">{{ rev.recovery_rate }}%</td>
+                    <td>{{ rev.inspected }}</td>
+                    <td class="waiting">{{ rev.waiting_inspection }}</td>
+                    <td class="defect">{{ rev.defects }}</td>
+                    <td class="defect">{{ rev.defect_rate }}%</td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="9">선택 기간의 Rev 데이터가 없습니다.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+    <section class="chart-grid">
+      <article class="chart-card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step">01</span>CX 원인 구성
+          </div>
+          <span class="card-help">1·2차 통합</span>
+        </div>
+        <p class="card-note">등록된 모든 원인의 비중을 비교합니다. 한 케이스에 원인이 두 개면 각각 한 번씩 집계됩니다.</p>
+        {% if issue_counts %}
+          <div class="donut-layout">
+            <div class="donut-canvas">
+              <canvas id="issueChart">
+              </canvas>
+            </div>
+            <div class="chart-legend">
+              {% for label in issue_labels %}
+                {% set count = issue_counts[loop.index0] %}
+                <div class="legend-item">
+                  <span class="legend-dot"
+                        style="--dot:{{ loop.cycle('#4f6ef7', '#8067e8', '#27b9d6', '#20b486', '#f4b740', '#f08a4b', '#ef6670', '#7c8da8', '#37a6a3', '#a466d8') }}">
+                  </span>
+                  <span class="legend-name" title="{{ label }}">{{ label }}</span>
+                  <span class="legend-value">
+                    <strong>{{ count }}회</strong>
+                    <small>{{ (count / cause_occurrences * 100) | round(1) }}%</small>
+                  </span>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% else %}
+          <div class="chart-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">∅</div>
+              <strong>원인 데이터가 없습니다</strong>
+              <span>선택 기간을 변경해 주세요.</span>
+            </div>
+          </div>
+        {% endif %}
+      </article>
+      <article class="chart-card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step">02</span>{{ selected_issue }} 세부 원인
+          </div>
+          <span class="card-help">Top 10</span>
+        </div>
+        <p class="card-note">선택 원인의 1차·2차 세부 분류를 합산해 빈도가 높은 순으로 보여줍니다.</p>
+        {% if detail_counts %}
+          <div class="chart-wrap">
+            <canvas id="detailChart">
+            </canvas>
+          </div>
+        {% else %}
+          <div class="chart-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">∅</div>
+              <strong>세부 원인이 없습니다</strong>
+              <span>CX 세부 분류 입력 상태를 확인해 주세요.</span>
+            </div>
+          </div>
+        {% endif %}
+      </article>
+      <article class="chart-card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step">03</span>HW Rev별 품질 분석 현황
+          </div>
+          <form class="rev-local-filter" method="get">
+            <input type="hidden" name="page" value="7">
+            <input type="hidden" name="year" value="{{ dashboard_year_param }}">
+            <input type="hidden" name="start" value="{{ filter_start }}">
+            <input type="hidden" name="end" value="{{ filter_end }}">
+            <input type="hidden" name="scope" value="{{ scope }}">
+            <input type="hidden" name="issue" value="{{ selected_issue }}">
+            <label for="qualityHwRev">HW Rev 선택</label>
+            <select id="qualityHwRev" name="hw_rev" onchange="this.form.submit()">
+              {% for rev in hw_rev_options %}
+                <option value="{{ rev }}" {% if rev == selected_hw_rev %}selected{% endif %}>{{ rev }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+        <p class="card-note">상단 HW Rev 필터에서 선택한 버전의 회수 및 품질 검토 흐름을 요약합니다.</p>
+        {% if selected_hw_rev %}
+          {% set rev = selected_hw_rev_summary %}
+          <div class="rev-report">
+            <div class="rev-score">
+              <div class="rev-score-head">
+                <span>SELECTED HW REV</span>
+                <strong>{{ selected_hw_rev }}</strong>
+              </div>
+              <div class="rev-score-main">
+                <span>회수 진행률</span>
+                <strong>{{ rev.return_rate }}</strong>
+                <small>%</small>
+              </div>
+              <div class="rev-score-foot">
+                <span>품질 검토 <b>{{ rev.inspected }}건</b>
+                </span>
+                <span>불량 확정 <b>{{ rev.defect }}건</b>
+                </span>
+              </div>
+            </div>
+            <div class="rev-report-body">
+              <div class="rev-report-title">
+                <div>
+                  <strong>{{ selected_hw_rev }} 처리 현황</strong>
+                  <span>{{ filter_start }}부터 {{ filter_end }}까지 접수된 케이스 기준</span>
+                </div>
+                <em>품질 보고용</em>
+              </div>
+              <div class="rev-process">
+                <div class="rev-process-item">
+                  <span>01 접수</span>
+                  <strong>{{ rev.received }}</strong>
+                  <small>전체 접수 건</small>
+                </div>
+                <div class="rev-process-item">
+                  <span>02 회수</span>
+                  <strong>{{ rev.returned }}</strong>
+                  <small>미회수 {{ rev.waiting_return }}건</small>
+                </div>
+                <div class="rev-process-item">
+                  <span>03 품질 검토</span>
+                  <strong>{{ rev.inspected }}</strong>
+                  <small>검토 대기 {{ rev.waiting_inspection }}건</small>
+                </div>
+                <div class="rev-process-item alert">
+                  <span>04 HW 불량</span>
+                  <strong>{{ rev.defect }}</strong>
+                  <small>품질 판정 NG</small>
+                </div>
+              </div>
+              <div class="rev-rates">
+                <div class="rev-rate">
+                  <div class="rev-rate-head">
+                    <span>회수율</span>
+                    <strong>{{ rev.return_rate }}%</strong>
+                  </div>
+                  <div class="rev-rate-track">
+                    <i style="--rate:{{ [rev.return_rate, 100]|min }}%">
+                    </i>
+                  </div>
+                </div>
+                <div class="rev-rate defect">
+                  <div class="rev-rate-head">
+                    <span>HW 불량률</span>
+                    <strong>{{ rev.defect_rate }}%</strong>
+                  </div>
+                  <div class="rev-rate-track">
+                    <i style="--rate:{{ [rev.defect_rate, 100]|min }}%">
+                    </i>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="rev-visual">
+              <div class="rev-visual-head">
+                <strong>접수 이후 품질 분석 흐름</strong>
+                <span>접수 건수를 100%로 환산</span>
+              </div>
+              <div class="rev-flow-bars">
+                <div class="rev-flow-row">
+                  <span>접수</span>
+                  <div class="rev-flow-track">
+                    <i style="--flow:100%">
+                    </i>
+                  </div>
+                  <b>{{ rev.received }}건</b>
+                </div>
+                <div class="rev-flow-row">
+                  <span>회수</span>
+                  <div class="rev-flow-track">
+                    <i style="--flow:{{ ([rev.returned / rev.received * 100, 100]|min) if rev.received else 0 }}%">
+                    </i>
+                  </div>
+                  <b>{{ rev.returned }}건</b>
+                </div>
+                <div class="rev-flow-row">
+                  <span>품질 검토</span>
+                  <div class="rev-flow-track">
+                    <i style="--flow:{{ ([rev.inspected / rev.received * 100, 100]|min) if rev.received else 0 }}%">
+                    </i>
+                  </div>
+                  <b>{{ rev.inspected }}건</b>
+                </div>
+                <div class="rev-flow-row">
+                  <span>HW 불량</span>
+                  <div class="rev-flow-track">
+                    <i style="--flow:{{ ([rev.defect / rev.received * 100, 100]|min) if rev.received else 0 }}%">
+                    </i>
+                  </div>
+                  <b>{{ rev.defect }}건</b>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% else %}
+          <div class="chart-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">Q</div>
+              <strong>품질 데이터가 없습니다</strong>
+              <span>선택 기간의 품질 분석 등록 건이 없습니다.</span>
+            </div>
+          </div>
+        {% endif %}
+      </article>
+      <article class="chart-card">
+        <div class="card-head">
+          <div class="card-title">
+            <span class="step">04</span>연구소 분석 결론
+          </div>
+          <span class="card-help">케이스 기준</span>
+        </div>
+        <p class="card-note">불량 구분, 근본 원인, 분석 결과 순으로 입력된 최종 결론을 집계합니다.</p>
+        {% if lab_counts and lab_labels != ['분류 미입력'] %}
+          <div class="chart-wrap">
+            <canvas id="labChart">
+            </canvas>
+          </div>
+        {% else %}
+          <div class="chart-wrap">
+            <div class="empty-state">
+              <div class="empty-icon">L</div>
+              <strong>분류된 연구소 결론이 없습니다</strong>
+              <span>등록 {{ lab_rows }}건 · 완료 {{ lab_completed }}건</span>
+            </div>
+          </div>
+        {% endif %}
+      </article>
+      <div class="guide">
+        <div class="guide-title">읽는 방법</div>
+        <div class="guide-item">
+          <strong>CX 원인</strong>
+          <span>원인이 2개면 각각 1회로 집계합니다.</span>
+        </div>
+        <div class="guide-item">
+          <strong>HW Rev 품질</strong>
+          <span>접수 건수 대비 회수율과 품질 판정 NG 건수를 Rev별로 비교합니다.</span>
+        </div>
+        <div class="guide-item">
+          <strong>연구소 결론</strong>
+          <span>완료 데이터가 없으면 결과 차트를 표시하지 않습니다.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="/static/dashboard_charts.js?v=20260826-3"></script>
+  <script>
+      const issueLabels = JSON.parse('{{ issue_labels | tojson | safe }}');
+      const issueCounts = JSON.parse('{{ issue_counts | tojson | safe }}');
+      const detailLabels = JSON.parse('{{ detail_labels | tojson | safe }}');
+      const detailCounts = JSON.parse('{{ detail_counts | tojson | safe }}');
+      const labLabels = JSON.parse('{{ lab_labels | tojson | safe }}');
+      const labCounts = JSON.parse('{{ lab_counts | tojson | safe }}');
+      const weeklyProgress = JSON.parse('{{ weekly_progress | tojson | safe }}');
+      const palette = ["#4f6ef7", "#8067e8", "#27b9d6", "#20b486", "#f4b740", "#f08a4b", "#ef6670", "#7c8da8", "#37a6a3", "#a466d8"];
+      Chart.defaults.font.family = "Pretendard, Inter, Arial, sans-serif";
+      Chart.defaults.color = "#66758f";
+      Chart.defaults.animation.duration = 220;
+      if (document.getElementById('qualityWeeklyProgressChart')) new Chart(document.getElementById('qualityWeeklyProgressChart'), {
+          type: 'line',
+          data: {
+              labels: weeklyProgress.labels,
+              datasets: [{
+                  label: '회수율',
+                  data: weeklyProgress.recovery_rates,
+                  borderColor: '#2f8a78',
+                  backgroundColor: 'rgba(47,138,120,.08)',
+                  borderWidth: 2.5,
+                  pointRadius: 2.5,
+                  pointHoverRadius: 5,
+                  fill: true,
+                  tension: .3
+              }, {
+                  label: 'HW 불량률',
+                  data: weeklyProgress.defect_rates,
+                  borderColor: '#d45d68',
+                  backgroundColor: 'rgba(212,93,104,.04)',
+                  borderWidth: 2.5,
+                  pointRadius: 2.5,
+                  pointHoverRadius: 5,
+                  fill: false,
+                  tension: .3
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: {
+                  mode: 'index',
+                  intersect: false
+              },
+              scales: {
+                  y: {
+                      min: 0,
+                      max: 100,
+                      ticks: {
+                          callback: value => `${value}%`
+                      },
+                      grid: {
+                          color: '#e5e9ef'
+                      }
+                  },
+                  x: {
+                      grid: {
+                          display: false
+                      },
+                      ticks: {
+                          maxRotation: 0,
+                          autoSkip: true,
+                          maxTicksLimit: 14
+                      }
+                  }
+              },
+              plugins: {
+                  legend: {
+                      position: 'bottom',
+                      labels: {
+                          usePointStyle: true,
+                          boxWidth: 8
+                      }
+                  },
+                  tooltip: {
+                      callbacks: {
+                          label: context => `${context.dataset.label}: ${context.raw}%`,
+                          afterBody: contexts => {
+                              const index = contexts[0]?.dataIndex ?? 0;
+                              return [`누적 접수 ${weeklyProgress.received[index]}건`, `누적 회수 ${weeklyProgress.recovered[index]}건`, `누적 HW 불량 ${weeklyProgress.defects[index]}건`];
+                          }
+                      }
+                  }
+              }
+          }
+      });
+      const donutTotal = {
+          id: "donutTotal",
+          afterDraw(chart, args, opts) {
+              if (chart.config.type !== "doughnut") return;
+              const meta = chart.getDatasetMeta(0);
+              if (!meta.data.length) return;
+              const center = meta.data[0];
+              const total = chart.data.datasets[0].data.reduce((sum, value) => sum + Number(value || 0), 0);
+              const {
+                  ctx
+              } = chart;
+              ctx.save();
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillStyle = "#14203a";
+              ctx.font = "800 20px Pretendard, sans-serif";
+              ctx.fillText(`총 ${total.toLocaleString()}${opts.unit||"건"}`, center.x, center.y - 7);
+              ctx.fillStyle = "#68758d";
+              ctx.font = "700 11px Pretendard, sans-serif";
+              ctx.fillText(opts.label || "전체", center.x, center.y + 15);
+              ctx.restore()
+          }
+      };
+      const barValues = {
+          id: "barValues",
+          afterDatasetsDraw(chart) {
+              if (chart.config.type !== "bar" || chart.options.indexAxis !== "y") return;
+              const {
+                  ctx
+              } = chart;
+              ctx.save();
+              ctx.font = "800 11px Pretendard, sans-serif";
+              ctx.fillStyle = "#263550";
+              ctx.textBaseline = "middle";
+              chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                  ctx.fillText(chart.data.datasets[0].data[i] + "건", bar.x + 8, bar.y)
+              });
+              ctx.restore()
+          }
+      };
+      if (document.getElementById("issueChart")) new Chart(document.getElementById("issueChart"), {
+          type: "doughnut",
+          data: {
+              labels: issueLabels,
+              datasets: [{
+                  data: issueCounts,
+                  backgroundColor: palette,
+                  borderColor: "#fff",
+                  borderWidth: 3,
+                  hoverOffset: 5
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              cutout: "62%",
+              layout: {
+                  padding: 8
+              },
+              plugins: {
+                  legend: {
+                      display: false
+                  },
+                  tooltip: {
+                      enabled: false
+                  },
+                  donutTotal: {
+                      unit: "회",
+                      label: "등록 원인"
+                  }
+              }
+          },
+          plugins: [donutTotal]
+      });
+      if (document.getElementById("detailChart")) {
+          const ctx = document.getElementById("detailChart").getContext("2d");
+          const gradient = ctx.createLinearGradient(0, 0, 430, 0);
+          gradient.addColorStop(0, "#4f6ef7");
+          gradient.addColorStop(1, "#8e72ed");
+          new Chart(ctx, {
+              type: "bar",
+              data: {
+                  labels: detailLabels,
+                  datasets: [{
+                      data: detailCounts,
+                      backgroundColor: gradient,
+                      borderRadius: 7,
+                      barPercentage: .7
+                  }]
+              },
+              options: {
+                  indexAxis: "y",
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  devicePixelRatio: Math.min(Math.max(window.devicePixelRatio || 1, 1), 1.5),
+                  layout: {
+                      padding: {
+                          left: 6,
+                          right: 52
+                      }
+                  },
+                  plugins: {
+                      legend: {
+                          display: false
+                      },
+                      tooltip: {
+                          titleFont: {
+                              size: 12,
+                              weight: "700"
+                          },
+                          bodyFont: {
+                              size: 12,
+                              weight: "700"
+                          },
+                          callbacks: {
+                              label: c => `${c.raw}건`
+                          }
+                      }
+                  },
+                  scales: {
+                      x: {
+                          beginAtZero: true,
+                          grid: {
+                              color: "#e7ebf2"
+                          },
+                          border: {
+                              display: false
+                          },
+                          ticks: {
+                              precision: 0,
+                              color: "#53617a",
+                              font: {
+                                  size: 11,
+                                  weight: "600"
+                              }
+                          }
+                      },
+                      y: {
+                          grid: {
+                              display: false
+                          },
+                          border: {
+                              display: false
+                          },
+                          ticks: {
+                              color: "#1f2d49",
+                              padding: 10,
+                              font: {
+                                  size: 12,
+                                  weight: "700",
+                                  family: "Pretendard, sans-serif"
+                              }
+                          }
+                      }
+                  }
+              },
+              plugins: [barValues]
+          })
+      }
+      if (document.getElementById("labChart")) new Chart(document.getElementById("labChart"), {
+          type: "bar",
+          data: {
+              labels: labLabels,
+              datasets: [{
+                  data: labCounts,
+                  backgroundColor: "#27b9d6",
+                  borderRadius: 7
+              }]
+          },
+          options: {
+              indexAxis: "y",
+              responsive: true,
+              maintainAspectRatio: false,
+              layout: {
+                  padding: {
+                      right: 42
+                  }
+              },
+              plugins: {
+                  legend: {
+                      display: false
+                  }
+              },
+              scales: {
+                  x: {
+                      beginAtZero: true,
+                      grid: {
+                          color: "#edf1f6"
+                      },
+                      border: {
+                          display: false
+                      },
+                      ticks: {
+                          precision: 0
+                      }
+                  },
+                  y: {
+                      grid: {
+                          display: false
+                      },
+                      border: {
+                          display: false
+                      }
+                  }
+              }
+          },
+          plugins: [barValues]
+      });
+  </script>
+{% endblock %}

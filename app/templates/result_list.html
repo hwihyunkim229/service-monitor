@@ -1,0 +1,902 @@
+{% extends "base.html" %}
+{% block page_name %}Case Master{% endblock %}
+{% block content %}
+  <style>
+      .master-shell {
+          --master-navy: #17324d;
+          --master-teal: #117589;
+          --master-line: #dce5eb;
+          display: grid;
+          gap: 14px
+      }
+
+      .master-hero {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 20px;
+          padding: 20px 22px;
+          border: 1px solid var(--master-line);
+          border-radius: 15px;
+          background: linear-gradient(120deg, #fff 0%, #fff 66%, #eaf6f7 100%);
+          box-shadow: 0 8px 28px rgba(23, 50, 77, .06)
+      }
+
+      .master-hero small {
+          color: var(--master-teal);
+          font-size: 11px;
+          font-weight: 850;
+          letter-spacing: .15em
+      }
+
+      .master-hero h1 {
+          margin: 6px 0 5px;
+          color: var(--master-navy);
+          font-size: 29px;
+          letter-spacing: -.045em
+      }
+
+      .master-hero p {
+          margin: 0;
+          color: #56677c;
+          font-size: 13px
+      }
+
+      .master-live {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          color: #496176;
+          font-size: 12px;
+          font-weight: 700
+      }
+
+      .master-live i {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #2aa876;
+          box-shadow: 0 0 0 5px #e3f5ed
+      }
+
+      .master-metrics {
+          display: grid;
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+          gap: 9px
+      }
+
+      .master-metric {
+          position: relative;
+          min-height: 96px;
+          padding: 14px 15px;
+          border: 1px solid var(--master-line);
+          border-radius: 12px;
+          background: #fff;
+          color: inherit;
+          text-decoration: none;
+          box-shadow: 0 4px 14px rgba(23, 50, 77, .04)
+      }
+
+      .master-metric:hover,
+      .master-metric.active {
+          border-color: var(--tone);
+          background: color-mix(in srgb, var(--tone) 5%, white)
+      }
+
+      .master-metric span {
+          display: block;
+          color: #607187;
+          font-size: 11px;
+          font-weight: 700
+      }
+
+      .master-metric strong {
+          display: block;
+          margin-top: 9px;
+          color: var(--tone);
+          font-size: 26px;
+          line-height: 1
+      }
+
+      .master-metric small {
+          display: block;
+          margin-top: 7px;
+          color: #8693a3;
+          font-size: 10px
+      }
+
+      .master-toolbar {
+          display: flex;
+          align-items: flex-end;
+          gap: 9px;
+          padding: 12px 14px;
+          border: 1px solid var(--master-line);
+          border-radius: 12px;
+          background: #fff
+      }
+
+      .master-toolbar .filter-field.search input {
+          width: 360px
+      }
+
+      .master-toolbar .master-count {
+          margin-left: auto;
+          color: #65758a;
+          font-size: 12px
+      }
+
+      .master-toolbar .master-count b {
+          color: var(--master-navy);
+          font-size: 15px
+      }
+
+      .master-card {
+          overflow: hidden;
+          border: 1px solid var(--master-line);
+          border-radius: 14px;
+          background: #fff;
+          box-shadow: 0 8px 26px rgba(23, 50, 77, .05)
+      }
+
+      .master-card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 13px 16px;
+          border-bottom: 1px solid var(--master-line)
+      }
+
+      .master-card-head strong {
+          color: var(--master-navy);
+          font-size: 15px
+      }
+
+      .master-card-head span {
+          color: #6a7a8e;
+          font-size: 11px
+      }
+
+      .master-table-wrap {
+          overflow: auto;
+          max-height: calc(100vh - 385px)
+      }
+
+      .master-table {
+          width: 100%;
+          min-width: 1220px;
+          font-size: 14px !important
+      }
+
+      .master-table th {
+          height: 46px !important;
+          color: #46566b !important;
+          font-size: 13px !important
+      }
+
+      .master-table td {
+          height: 54px !important;
+          padding: 8px 10px !important;
+          color: #26364b !important;
+          font-size: 14px !important
+      }
+
+      .master-table tbody tr {
+          cursor: pointer
+      }
+
+      .master-table tbody tr:hover td {
+          background: #edf7f8 !important
+      }
+
+      .master-code {
+          color: #0f6478;
+          font-weight: 800
+      }
+
+      .master-sub {
+          display: block;
+          margin-top: 3px;
+          color: #8290a1;
+          font-size: 11px
+      }
+
+      .stage-badge,
+      .dept-state {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 25px;
+          padding: 0 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 800
+      }
+
+      .stage-badge {
+          background: #e9f5f7;
+          color: #116c7d
+      }
+
+      .dept-state.done {
+          background: #e7f6ef;
+          color: #14744f
+      }
+
+      .dept-state.wait {
+          background: #fff3df;
+          color: #9a5d09
+      }
+
+      .dept-state.none {
+          background: #f0f2f5;
+          color: #718096
+      }
+
+      .master-progress {
+          display: grid;
+          grid-template-columns: minmax(80px, 1fr) 38px;
+          align-items: center;
+          gap: 8px
+      }
+
+      .master-progress i {
+          display: block;
+          height: 7px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #e9eef2
+      }
+
+      .master-progress i::after {
+          display: block;
+          width: var(--value);
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #168298, #35aa83);
+          content: ""
+      }
+
+      .master-progress b {
+          color: #355269;
+          font-size: 12px
+      }
+
+      .master-detail-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 500;
+          display: none;
+          background: rgba(9, 20, 34, .43);
+          backdrop-filter: blur(2px)
+      }
+
+      .master-detail-backdrop.open {
+          display: block
+      }
+
+      .master-drawer {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: min(820px, 94vw);
+          height: 100%;
+          overflow: auto;
+          background: #f4f7f9;
+          box-shadow: -24px 0 70px rgba(6, 18, 32, .24)
+      }
+
+      .drawer-head {
+          position: sticky;
+          top: 0;
+          z-index: 4;
+          padding: 20px 22px 16px;
+          border-bottom: 1px solid #d8e2e9;
+          background: rgba(255, 255, 255, .96);
+          backdrop-filter: blur(12px)
+      }
+
+      .drawer-head-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 15px
+      }
+
+      .drawer-kicker {
+          color: var(--master-teal);
+          font-size: 10px;
+          font-weight: 850;
+          letter-spacing: .14em
+      }
+
+      .drawer-head h2 {
+          margin: 5px 0 4px;
+          color: var(--master-navy);
+          font-size: 25px
+      }
+
+      .drawer-head p {
+          margin: 0;
+          color: #607187;
+          font-size: 12px
+      }
+
+      .drawer-actions {
+          display: flex;
+          gap: 6px
+      }
+
+      .drawer-actions button,
+      .drawer-actions a {
+          min-height: 34px;
+          height: 34px;
+          padding: 0 10px;
+          font-size: 10px
+      }
+
+      .drawer-summary {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+          margin-top: 15px
+      }
+
+      .drawer-summary div {
+          padding: 9px 10px;
+          border: 1px solid #dce5eb;
+          border-radius: 9px;
+          background: #f8fafb
+      }
+
+      .drawer-summary span {
+          display: block;
+          color: #7a8899;
+          font-size: 9px
+      }
+
+      .drawer-summary strong {
+          display: block;
+          margin-top: 4px;
+          color: #263c52;
+          font-size: 12px
+      }
+
+      .case-timeline {
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          padding: 18px 22px 8px
+      }
+
+      .timeline-step {
+          position: relative;
+          text-align: center
+      }
+
+      .timeline-step::before {
+          position: absolute;
+          top: 10px;
+          right: 50%;
+          left: -50%;
+          height: 3px;
+          background: #d8e1e7;
+          content: ""
+      }
+
+      .timeline-step:first-child::before {
+          display: none
+      }
+
+      .timeline-step.done::before,
+      .timeline-step.done .timeline-dot {
+          background: #2a9b78
+      }
+
+      .timeline-dot {
+          position: relative;
+          z-index: 1;
+          width: 20px;
+          height: 20px;
+          margin: auto;
+          border: 5px solid #f4f7f9;
+          border-radius: 50%;
+          background: #c9d3dc;
+          box-shadow: 0 0 0 1px #cbd6de
+      }
+
+      .timeline-step b {
+          display: block;
+          margin-top: 7px;
+          color: #42556b;
+          font-size: 10px
+      }
+
+      .timeline-step small {
+          display: block;
+          margin-top: 3px;
+          color: #8592a2;
+          font-size: 9px
+      }
+
+      .drawer-tabs {
+          display: flex;
+          gap: 6px;
+          overflow-x: auto;
+          padding: 13px 22px 0
+      }
+
+      .drawer-tabs button {
+          min-height: 36px;
+          height: 36px;
+          border-color: #d5e0e7;
+          background: #fff;
+          color: #506176;
+          font-size: 11px;
+          box-shadow: none
+      }
+
+      .drawer-tabs button.active {
+          border-color: var(--master-teal);
+          background: var(--master-teal);
+          color: #fff
+      }
+
+      .drawer-body {
+          padding: 14px 22px 28px
+      }
+
+      .detail-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 9px
+      }
+
+      .detail-field {
+          min-height: 68px;
+          padding: 10px 12px;
+          border: 1px solid #dde5eb;
+          border-radius: 10px;
+          background: #fff
+      }
+
+      .detail-field.wide {
+          grid-column: 1/-1
+      }
+
+      .detail-field span {
+          display: block;
+          color: #738297;
+          font-size: 11px;
+          font-weight: 700
+      }
+
+      .detail-field div {
+          margin-top: 6px;
+          color: #24364b;
+          font-size: 14px;
+          line-height: 1.5;
+          white-space: pre-wrap;
+          overflow-wrap: anywhere
+      }
+
+      .attachment-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px
+      }
+
+      .attachment-download {
+          display: inline-flex;
+          align-items: center;
+          min-height: 32px;
+          padding: 6px 10px;
+          border: 1px solid #cfe0e3;
+          border-radius: 8px;
+          background: #f2f8f8;
+          color: #176779;
+          font-size: 11px;
+          font-weight: 750;
+          text-decoration: none
+      }
+
+      .attachment-download:hover {
+          border-color: #86b4bc;
+          background: #e7f3f4;
+          color: #105968
+      }
+
+      .drawer-loading {
+          padding: 70px;
+          text-align: center;
+          color: #718096
+      }
+
+      .drawer-tabs button.active,
+      .drawer-tabs button.active:hover {
+          border-color: #117589 !important;
+          background: #117589 !important;
+          color: #fff !important
+      }
+
+      @media(max-width:1200px) {
+          .master-metrics {
+              grid-template-columns: repeat(3, 1fr)
+          }
+      }
+
+      @media(max-width:760px) {
+          .master-metrics {
+              grid-template-columns: repeat(2, 1fr)
+          }
+
+          .master-toolbar {
+              align-items: stretch;
+              flex-direction: column
+          }
+
+          .master-toolbar .filter-field.search input {
+              width: 100%
+          }
+
+          .master-toolbar .master-count {
+              margin-left: 0
+          }
+
+          .drawer-summary {
+              grid-template-columns: repeat(2, 1fr)
+          }
+
+          .detail-grid {
+              grid-template-columns: 1fr
+          }
+
+          .detail-field.wide {
+              grid-column: auto
+          }
+
+          .master-hero {
+              align-items: flex-start;
+              flex-direction: column
+          }
+      }
+  </style>
+  <div class="master-shell">
+    <section class="master-hero">
+      <div>
+        <small>CASE MASTER CONTROL CENTER</small>
+        <h1>서비스 통합 마스터</h1>
+        <p>CX 접수부터 회수, 품질, R&amp;D 완료까지 단일 Case 단위로 추적합니다.</p>
+      </div>
+      <div class="master-live">
+        <i>
+        </i>LIVE MASTER DATA
+      </div>
+    </section>
+    <section class="master-metrics" aria-label="단계별 현황">
+      {% for key,label,desc,tone in [('all','전체 Case','전체 마스터','#3975d5'),('cx','CX 처리 필요','접수·처리 확인','#d48726'),('recovery','회수 대기','교품 후 미회수','#d85f58'),('quality','품질 대기·분석','회수 후 품질','#7b61c9'),('rnd','R&D 대기·분석','연구소 처리','#117589'),('complete','전체 완료','R&D 완료','#2fa584')] %}
+        <a class="master-metric {% if stage==key %}active{% endif %}"
+           style="--tone:{{ tone }}"
+           href="?stage={{ key }}&amp;limit={{ limit }}{% if keyword %}&amp;keyword={{ keyword|urlencode }}{% endif %}">
+          <span>{{ label }}</span>
+          <strong>{{ master_metrics[key] }}</strong>
+          <small>{{ desc }}</small>
+        </a>
+      {% endfor %}
+    </section>
+    <div class="workspace-toolbar">
+      <form class="filters" method="get">
+        <input type="hidden" name="stage" value="{{ stage }}">
+        <input type="hidden" name="order" value="{{ order }}">
+        <label class="filter-field search">
+          통합 검색<input name="keyword"
+       value="{{ keyword }}"
+       placeholder="식별코드, S/N, 병원명, 원인, 결과 등">
+        </label>
+        <label class="filter-field">
+          표시 개수<select name="limit">
+          <option {% if limit==20 %}selected{% endif %}>20</option>
+          <option {% if limit==50 %}selected{% endif %}>50</option>
+          <option {% if limit==100 %}selected{% endif %}>100</option>
+          </select>
+        </label>
+        <button>조회</button>
+        <a class="button secondary" href="/{{ product }}/result">초기화</a>
+        <a class="button secondary"
+           href="/{{ product }}/result/excel?stage={{ stage }}&amp;keyword={{ keyword|urlencode }}">엑셀 다운로드</a>
+      </form>
+      <div class="sort-toggle">
+        <span class="sort-state">현재 {{ '내림차순' if order == 'desc' else '오름차순' }}</span>
+        <a class="button secondary"
+           href="?stage={{ stage }}&amp;page=1&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ 'asc' if order == 'desc' else 'desc' }}">{{ '오름차순' if order == 'desc' else '내림차순' }}으로 정렬</a>
+        <span class="filter-field">검색 결과<strong>{{ total_count }}건</strong>
+        </span>
+      </div>
+    </div>
+    <section class="master-card">
+      <div class="master-card-head">
+        <strong>Case Master List</strong>
+        <span>행을 선택하면 전 부서 상세 정보가 열립니다.</span>
+      </div>
+      <div class="master-table-wrap">
+        <table class="master-table">
+          <thead>
+            <tr>
+              <th>식별코드</th>
+              <th>고객·기기</th>
+              <th>접수 유형</th>
+              <th>현재 단계</th>
+              <th>CX</th>
+              <th>교품·회수</th>
+              <th>품질</th>
+              <th>R&amp;D</th>
+              <th>전체 진행률</th>
+              <th>상세</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr data-master-id="{{ row.cs.id }}">
+                <td>
+                  <span class="master-code">{{ row.cs.transfer_no or '-' }}</span>
+                  <small class="master-sub">{{ row.cs.received_at.strftime("%Y-%m-%d") if row.cs.received_at else '접수일 없음' }}</small>
+                </td>
+                <td>
+                  {{ row.cs.hospital_name or '-' }}<small class="master-sub">{{ row.cs.serial_no or 'S/N 없음' }} · {{ row.hw_rev or 'Rev 미지정' }}</small>
+                </td>
+                <td>{{ [row.cs.category_main,row.cs.category_sub]|select|join(" > ") or '-' }}</td>
+                <td>
+                  <span class="stage-badge">{{ row.current_stage }}</span>
+                </td>
+                <td>
+                  <span class="dept-state {{ 'done' if row.cx_status=='완료' else 'none' if row.cx_status=='해당 없음' else 'wait' }}">{{ row.cx_status }}</span>
+                </td>
+                <td>
+                  <span class="dept-state {{ 'done' if row.exchange_status=='회수 완료' else 'none' if row.exchange_status=='해당 없음' else 'wait' }}">{{ row.exchange_status }}</span>
+                </td>
+                <td>
+                  <span class="dept-state {{ 'done' if row.quality_status=='완료' else 'none' if row.quality_status=='해당 없음' else 'wait' }}">{{ row.quality_status }}</span>
+                </td>
+                <td>
+                  <span class="dept-state {{ 'done' if row.rnd_status=='완료' else 'none' if row.rnd_status=='해당 없음' else 'wait' }}">{{ row.rnd_status }}</span>
+                </td>
+                <td>
+                  <div class="master-progress" style="--value:{{ row.progress }}%">
+                    <i>
+                    </i>
+                    <b>{{ row.progress }}%</b>
+                  </div>
+                </td>
+                <td>
+                  <button class="flow-btn master-open" type="button">열기</button>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="10" class="empty-state">조건에 맞는 마스터 데이터가 없습니다.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <div class="footer-row"
+         data-page="{{ page }}"
+         data-total-pages="{{ total_pages or 1 }}">
+      <span>{{ page }} / {{ total_pages or 1 }} 페이지</span>
+      <span>
+        {% if page>1 %}
+          <a href="?stage={{ stage }}&amp;page={{ page-1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ order }}">이전</a>
+        {% endif %} &nbsp; {% if page<total_pages %}
+        <a href="?stage={{ stage }}&amp;page={{ page+1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ order }}">다음</a>
+{% endif %}
+</span>
+</div>
+</div>
+<div class="master-detail-backdrop" id="masterDetail">
+  <aside class="master-drawer">
+    <div class="drawer-head">
+      <div class="drawer-head-top">
+        <div>
+          <span class="drawer-kicker">CASE MASTER DETAIL</span>
+          <h2 id="drawerCode">-</h2>
+          <p id="drawerContext">-</p>
+        </div>
+        <div class="drawer-actions">
+          <a class="button secondary" id="drawerWorkflow" href="#">업무 이동</a>
+          <button class="secondary" id="drawerPrint" type="button">인쇄</button>
+          <button class="secondary" id="drawerClose" type="button">닫기</button>
+        </div>
+      </div>
+      <div class="drawer-summary" id="drawerSummary"></div>
+    </div>
+    <div id="drawerTimeline" class="case-timeline"></div>
+    <div class="drawer-tabs" id="drawerTabs"></div>
+    <div class="drawer-body" id="drawerBody">
+      <div class="drawer-loading">Case 정보를 불러오는 중입니다.</div>
+    </div>
+  </aside>
+</div>
+<script>
+    (() => {
+        const product = {{ product|tojson }},
+            backdrop = document.getElementById('masterDetail'),
+            body = document.getElementById('drawerBody');
+        const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        } [c]));
+        const labels = {
+            basic: {
+                date_only: '기준 일자',
+                received_at: '접수',
+                processed_at: '처리',
+                cs_started_at: '상담 시작',
+                cs_completed_at: '상담 종료',
+                week: '주차',
+                transfer_no: '식별코드',
+                hospital_name: '병원명',
+                rev: 'Rev',
+                seller: '판매처',
+                cx_transfer: 'CX 이관',
+                rnd_transfer: 'R&D 이관',
+                handover_type: '이관 유형',
+                rnd_team: 'R&D Team',
+                category_main: '유형(대)',
+                category_sub: '유형(소)',
+                description: '문의사항',
+                exchange_type: '교품 유형',
+                serial_no: 'S/N',
+                lot: 'LOT',
+                size: 'Size'
+            },
+            cx: {
+                result_summary: '처리 결과',
+                data_loss_type: '데이터 손실',
+                data_loss_count: '손실 건수',
+                cx_yn: 'CX 이관',
+                rnd_yn: 'R&D 이관',
+                rnd_team: 'R&D Team',
+                received_at: '접수',
+                processed_at: '처리',
+                issue1: '불량원인 1',
+                depth1_1: 'Depth 1-1',
+                depth1_2: 'Depth 1-2',
+                issue2: '불량원인 2',
+                depth2_1: 'Depth 2-1',
+                depth2_2: 'Depth 2-2',
+                exchange_type: '교품 유형',
+                completed_at: 'CX 완료일'
+            },
+            exchange: {
+                exchange_type: '교품 유형',
+                return_yn: '회수 여부',
+                return_at: '회수일',
+                invoice_no: '송장 번호',
+                replacement_serial_no: '대치품 S/N',
+                serial_no: 'S/N',
+                lot: 'LOT',
+                size: 'Size'
+            },
+            quality: {
+                current_self_cradle: 'Self Cradle',
+                current_master_ring: 'Master Ring',
+                current_master_cradle: 'Master Cradle',
+                station_charge: 'Station 충전',
+                charge_log: '충전 로그',
+                battery_3h: '3H 배터리',
+                disconnect_connectable: '재연결',
+                battery_after_disconnect: '분리 후 배터리',
+                signal: 'Signal',
+                bt: 'BT',
+                appearance: '외관',
+                discharge_time: '방전 시간',
+                discharge_result: '방전 결과',
+                water_damage: '침수',
+                cap_height: 'Cap 높이',
+                defect_detail: '불량 상세',
+                quality_result: '품질 결과',
+                lab_transfer_date: '품질 분석 완료일',
+                rev: 'Rev',
+                cell_memos: '품질 셀 메모'
+            },
+            rnd: {
+                serial_no: 'S/N',
+                root_cause: '불량 원인',
+                analysis_result: '분석 결과',
+                defect_type: '불량 유형',
+                remark: '비고',
+                analysis_completed_date: '분석 완료일',
+                attachment: '첨부 자료'
+            }
+        };
+        labels.quality = {
+            rev: '공정 Rev',
+            hw_rev: 'HW Rev',
+            return_transfer_date: '회수품 이관일',
+            ...{{ quality_labels|tojson }},
+            lab_transfer_date: '품질 분석 완료일',
+            cell_memos: '품질 셀 메모'
+        };
+        const sectionNames = {
+            basic: '기본 정보',
+            cx: 'CX 분석',
+            exchange: '교품·회수',
+            quality: '품질 분석',
+            rnd: 'R&D 분석'
+        };
+        let detail = null,
+            active = 'basic';
+
+        function statusClass(value) {
+            return ['완료', '회수 완료'].includes(value) ? 'done' : ['해당 없음'].includes(value) ? 'none' : 'wait'
+        }
+
+        function renderSection(key) {
+            active = key;
+            document.querySelectorAll('#drawerTabs button').forEach(x => x.classList.toggle('active', x.dataset.key === key));
+            const data = detail[key] || {},
+                map = labels[key];
+            const fields = Object.entries(map).map(([field, label]) => {
+                const value = data[field];
+                const wide = ['description', 'result_summary', 'defect_detail', 'quality_result', 'root_cause', 'analysis_result', 'remark'].includes(field);
+                if (key === 'rnd' && field === 'attachment') {
+                    let files = [];
+                    try {
+                        files = Array.isArray(value) ? value : JSON.parse(value || '[]');
+                    } catch {
+                        files = value ? [value] : [];
+                    }
+                    const links = files.length ? files.map(filename => {
+                        const url = `/${product}/lab/file?filename=${encodeURIComponent(filename)}`;
+                        return `<a class="attachment-download" href="${url}" download>${esc(filename)}</a>`;
+                    }).join('') : '-';
+                    return `<div class="detail-field wide"><span>${esc(label)}</span><div class="attachment-list">${links}</div></div>`
+                }
+                return `<div class="detail-field ${wide?'wide':''}"><span>${esc(label)}</span><div>${esc(value||'-')}</div></div>`
+            }).join('');
+            body.innerHTML = `<div class="detail-grid">${fields}</div>`
+        }
+
+        function render(data) {
+            detail = data;
+            document.getElementById('drawerCode').textContent = data.transfer_no || '식별코드 없음';
+            document.getElementById('drawerContext').textContent = [data.hospital_name, data.serial_no].filter(Boolean).join(' · ') || '고객·기기 정보 없음';
+            document.getElementById('drawerWorkflow').href = `/${product}/cx?keyword=${encodeURIComponent(data.transfer_no||'')}`;
+            document.getElementById('drawerSummary').innerHTML = [
+                ['현재 단계', data.state.current_stage],
+                ['진행률', `${data.state.progress}%`],
+                ['품질', data.state.quality_status],
+                ['R&D', data.state.rnd_status]
+            ].map(([k, v]) => `<div><span>${k}</span><strong class="${k==='품질'||k==='R&D'?'dept-state '+statusClass(v):''}">${esc(v)}</strong></div>`).join('');
+            document.getElementById('drawerTimeline').innerHTML = data.timeline.map(x => `<div class="timeline-step ${x.done?'done':''}"><div class="timeline-dot"></div><b>${esc(x.label)}</b><small>${esc(x.date||'미완료')}</small></div>`).join('');
+            document.getElementById('drawerTabs').innerHTML = Object.entries(sectionNames).map(([k, v]) => `<button type="button" data-key="${k}">${v}</button>`).join('');
+            document.querySelectorAll('#drawerTabs button').forEach(x => x.onclick = () => renderSection(x.dataset.key));
+            renderSection('basic')
+        }
+        async function openDetail(id) {
+            backdrop.classList.add('open');
+            body.innerHTML = '<div class="drawer-loading">Case 정보를 불러오는 중입니다.</div>';
+            const response = await fetch(`/${product}/api/result/master/${id}`);
+            if (!response.ok) {
+                body.innerHTML = '<div class="drawer-loading">상세 정보를 불러오지 못했습니다.</div>';
+                return
+            }
+            render(await response.json())
+        }
+        document.querySelectorAll('[data-master-id]').forEach(row => row.addEventListener('click', e => {
+            if (e.target.closest('a')) return;
+            openDetail(row.dataset.masterId)
+        }));
+        document.getElementById('drawerClose').onclick = () => backdrop.classList.remove('open');
+        backdrop.addEventListener('click', e => {
+            if (e.target === backdrop) backdrop.classList.remove('open')
+        });
+        document.getElementById('drawerPrint').onclick = () => window.print();
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') backdrop.classList.remove('open')
+        })
+    })();
+</script>
+{% endblock %}

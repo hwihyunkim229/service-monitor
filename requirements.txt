@@ -1,0 +1,11 @@
+fastapi==0.128.0
+uvicorn[standard]
+sqlalchemy==2.0.46
+jinja2
+python-multipart
+python-dotenv
+passlib[argon2]
+pandas
+openpyxl
+itsdangerous
+gspread

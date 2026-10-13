@@ -1,0 +1,369 @@
+{% extends "base.html" %}
+{% block page_name %}관리자 설정{% endblock %}
+{% block content %}
+  <style>
+      .admin-layout {
+          display: grid;
+          grid-template-columns: 340px 1fr;
+          gap: 16px
+      }
+
+      .admin-card {
+          padding: 20px;
+          border: 1px solid var(--line);
+          border-radius: 14px;
+          background: #fff;
+          box-shadow: var(--shadow)
+      }
+
+      .admin-card h2 {
+          margin: 0 0 5px;
+          font-size: 17px
+      }
+
+      .admin-card>p {
+          margin: 0 0 18px;
+          color: var(--muted);
+          font-size: 11px
+      }
+
+      .account-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px
+      }
+
+      .account-form label {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          color: #475467;
+          font-size: 10px;
+          font-weight: 700
+      }
+
+      .account-form button {
+          margin-top: 5px
+      }
+
+      .admin-table {
+          width: 100%
+      }
+
+      .admin-table td,
+      .admin-table th {
+          white-space: nowrap
+      }
+
+      .pill {
+          display: inline-flex;
+          padding: 4px 7px;
+          border-radius: 999px;
+          background: var(--primary-soft);
+          color: var(--primary);
+          font-size: 9px;
+          font-weight: 750
+      }
+
+      .user-actions {
+          display: flex;
+          gap: 6px
+      }
+
+      .user-actions form {
+          display: flex;
+          gap: 5px
+      }
+
+      .user-actions input {
+          width: 120px;
+          min-height: 32px;
+          height: 32px
+      }
+
+      .team-update-form {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+      }
+
+      .team-update-form select {
+          min-width: 110px;
+          height: 32px;
+          min-height: 32px;
+          font-size: 12px;
+      }
+
+      .team-update-form button {
+          min-height: 32px;
+          padding: 0 10px;
+          font-size: 12px;
+      }
+
+      .permission-card {
+          grid-column: 1/-1
+      }
+
+      .product-admin-card {
+          grid-column: 1/-1;
+      }
+
+      .product-admin-grid {
+          display: grid;
+          grid-template-columns: minmax(290px, 380px) minmax(0, 1fr);
+          gap: 24px;
+      }
+
+      .product-admin-grid .account-form label,
+      .product-admin-grid .admin-table {
+          font-size: 13px;
+      }
+
+      .product-admin-grid .account-form label {
+          color: #344054;
+      }
+
+      .product-admin-note {
+          margin: 12px 0 0;
+          color: var(--muted);
+          font-size: 12px;
+          line-height: 1.5;
+      }
+
+      .role-guide {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+          margin: 14px 0 18px;
+      }
+
+      .role-guide article {
+          padding: 13px;
+          border: 1px solid #dfe7ed;
+          border-radius: 10px;
+          background: #f8fafc;
+      }
+
+      .role-guide strong {
+          display: block;
+          margin-bottom: 5px;
+          color: #17384b;
+          font-size: 13px;
+      }
+
+      .role-guide span {
+          color: #52677a;
+          font-size: 12px;
+          line-height: 1.5;
+      }
+
+      .permission-matrix {
+          width: 100%;
+          margin-top: 10px
+      }
+
+      .permission-matrix td:first-child,
+      .permission-matrix th:first-child {
+          text-align: left;
+          font-weight: 700
+      }
+
+      .yes {
+          color: var(--success);
+          font-weight: 800
+      }
+
+      .limited {
+          color: #b54708;
+          font-weight: 700
+      }
+
+      .no {
+          color: #98a2b3
+      }
+
+      @media(max-width:1000px) {
+          .admin-layout {
+              grid-template-columns: 1fr
+          }
+
+          .product-admin-grid {
+              grid-template-columns: 1fr
+          }
+
+          .role-guide {
+              grid-template-columns: repeat(2, minmax(0, 1fr))
+          }
+      }
+  </style>
+  <div class="page-head">
+    <div class="page-title">
+      <span>ACCESS CONTROL</span>
+      <h1>계정 및 권한 관리</h1>
+      <p>역할을 선택하고 계정별로 페이지·작업 권한을 설정합니다.</p>
+    </div>
+  </div>
+  {% if error %}
+    <div class="auth-alert">{{ error }}</div>
+  {% endif %}
+  <div class="admin-layout">
+    <section class="admin-card">
+      <h2>새 계정 생성</h2>
+      <p>최초 로그인 시 비밀번호 변경이 필수입니다.</p>
+      <form class="account-form" method="post" action="/admin/users">
+        <label>
+          아이디<input name="username" required autocomplete="off">
+        </label>
+        <label>
+          초기 비밀번호<input type="password" name="initial_password" minlength="8" required>
+        </label>
+        <label>
+          담당 팀<select name="team">
+          {% for key,label in teams.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+          </select>
+        </label>
+        <label>
+          권한 역할<select name="role">
+          {% for key,label in roles.items() %}
+            <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+          </select>
+        </label>
+        <button>계정 생성</button>
+      </form>
+    </section>
+    <section class="admin-card">
+      <h2>계정 목록</h2>
+      <p>팀은 소속 표시입니다. 실제 접근 범위는 계정별 권한에서 설정합니다.</p>
+      <div class="table-scroll">
+        <table class="admin-table spreadsheet-enhanced">
+          <thead>
+            <tr>
+              <th>아이디</th>
+              <th>팀</th>
+              <th>역할</th>
+              <th>비밀번호 상태</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+              <tr>
+                <td>{{ user.username }}</td>
+                <td>
+                  <form class="team-update-form"
+                        method="post"
+                        action="/admin/users/{{ user.id }}/team">
+                    <select name="team" aria-label="{{ user.username }} 담당 팀">
+                      {% for key,label in teams.items() %}
+                        <option value="{{ key }}" {% if user.team == key %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                    <button class="secondary" type="submit">변경</button>
+                  </form>
+                </td>
+                <td>{{ roles.get(user.role,user.role) }}</td>
+                <td>{{ '변경 필요' if user.force_password_change else '정상' }}</td>
+                <td>
+                  <div class="user-actions">
+                    <a class="secondary" href="/admin/users/{{ user.id }}/permissions">권한 설정</a>
+                    <form method="post" action="/admin/users/{{ user.id }}/reset-password">
+                      <input type="password"
+                             name="initial_password"
+                             minlength="8"
+                             placeholder="새 초기 비밀번호"
+                             required>
+                      <button class="secondary">초기화</button>
+                    </form>
+                    <form method="post" action="/admin/users/{{ user.id }}/delete">
+                      <button class="danger">삭제</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section class="admin-card product-admin-card" id="products">
+      <h2>운영 제품 관리</h2>
+      <p>제품을 등록하면 독립된 CX·교품/회수·품질·연구소·최종 결과 워크스페이스가 생성됩니다.</p>
+      <div class="product-admin-grid">
+        <div>
+          <form class="account-form" method="post" action="/admin/products">
+            <label>
+              제품명<input name="name" maxlength="60" placeholder="예: CART ON" required>
+            </label>
+            <label>
+              내부 코드<input name="code"
+       pattern="[a-z][a-z0-9_]{1,39}"
+       maxlength="40"
+       placeholder="예: cart_on"
+       required>
+            </label>
+            <label>
+              업무 양식<select name="profile">
+              <option value="pro">CART BP pro 형식 (병원명·데이터 손실 포함)</option>
+              <option value="bp">CART BP 형식 (병원명·데이터 손실 제외)</option>
+              </select>
+            </label>
+            <label>
+              Jira 프로젝트 키 · 선택<input name="jira_project"
+       maxlength="20"
+       pattern="[A-Za-z][A-Za-z0-9_-]*"
+       placeholder="예: CART">
+            </label>
+            <button type="submit">운영 제품 추가</button>
+          </form>
+          <p class="product-admin-note">내부 코드는 등록 후 변경할 수 없습니다. 접수 유형과 Slack 자동 분석은 선택한 업무 양식의 기존 규칙을 사용하므로 제품별 규칙은 운영 전에 확인해 주세요. Jira 키가 없으면 Jira 대시보드는 표시되지 않으며, 외부 스프레드시트 연동은 별도 설정이 필요합니다.</p>
+        </div>
+        <div class="table-scroll">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>운영 제품</th>
+                <th>코드</th>
+                <th>업무 양식</th>
+                <th>Jira</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in products %}
+                <tr>
+                  <td>
+                    <strong>{{ item.name }}</strong>
+                  </td>
+                  <td>{{ item.code }}</td>
+                  <td>{{ 'BP 형식' if item.profile == 'bp' else 'Pro 형식' }}</td>
+                  <td>{{ item.jira_project or '연결 없음' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section class="admin-card permission-card">
+      <h2>권한 정책</h2>
+      <p>역할은 기본 한계를 정하고, 실제 허용 범위는 계정별 권한표에서 설정합니다.</p>
+      <div class="role-guide">
+        <article>
+          <strong>시스템 관리자</strong>
+          <span>모든 페이지와 작업, 계정 및 운영 제품을 관리합니다.</span>
+        </article>
+        <article>
+          <strong>사용자</strong>
+          <span>계정별로 조회·다운로드·등록·수정·Excel 업로드·Slack 가져오기·첨부 업로드·삭제·승인을 설정합니다.</span>
+        </article>
+        <article>
+          <strong>뷰어</strong>
+          <span>허용된 페이지의 조회와 Excel 다운로드만 가능합니다. 다운로드도 계정별로 끌 수 있습니다.</span>
+        </article>
+      </div>
+      <p>새 계정은 소속 팀 업무와 대시보드의 기본 권한으로 시작합니다. 계정 목록의 ‘권한 설정’에서 언제든 변경할 수 있습니다. 소속 팀 변경만으로 기존 세부 권한이 자동 변경되지는 않습니다.</p>
+    </section>
+  </div>
+{% endblock %}

@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+{% block content %}
+  <style>
+      #transferModal .compact-modal {
+          width: min(480px, 94vw);
+          padding: 30px;
+      }
+
+      #transferModal .modal-kicker {
+          margin-bottom: 9px;
+          font-size: 11px;
+      }
+
+      #transferModal h2 {
+          margin-bottom: 8px;
+          font-size: 23px;
+          line-height: 1.3;
+      }
+
+      #transferModal>.modal>p,
+      #transferModal .modal>p {
+          margin-bottom: 20px;
+          font-size: 13px;
+          line-height: 1.55;
+      }
+
+      #transferModal .filter-field {
+          gap: 7px;
+          color: #344054;
+          font-size: 13px;
+          font-weight: 700;
+      }
+
+      #transferModal .filter-field select {
+          height: 43px;
+          padding: 0 13px;
+          font-size: 14px;
+      }
+
+      #transferModal .urgent-check {
+          gap: 12px;
+          margin-top: 17px;
+          padding: 15px;
+      }
+
+      #transferModal .urgent-check input {
+          width: 19px;
+          min-height: 19px;
+      }
+
+      #transferModal .urgent-check strong {
+          font-size: 14px;
+          line-height: 1.35;
+      }
+
+      #transferModal .urgent-check small {
+          margin-top: 4px;
+          font-size: 12px;
+          line-height: 1.45;
+      }
+
+      #transferModal .modal-actions {
+          margin-top: 20px;
+      }
+
+      #transferModal .modal-actions button {
+          min-height: 40px;
+          padding: 0 15px;
+          font-size: 13px;
+      }
+
+      .exchange-page #selectAllTransfer,
+      .exchange-page .transfer-check {
+          width: 16px;
+          min-width: 16px;
+          max-width: 16px;
+          height: 16px;
+          min-height: 16px;
+          margin: 0 auto;
+          padding: 0;
+          border-radius: 4px;
+          accent-color: #14788e;
+          cursor: pointer;
+      }
+
+      .exchange-page th:first-child,
+      .exchange-page td:first-child {
+          width: 42px;
+          min-width: 42px;
+          text-align: center;
+      }
+
+      .return-date-wrap,
+      .replacement-serial-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          min-width: 126px
+      }
+
+      .return-date-input,
+      .replacement-serial-input {
+          width: 108px;
+          min-width: 108px;
+          height: 31px;
+          padding: 3px 7px;
+          border: 1px solid transparent;
+          border-radius: 7px;
+          background: transparent;
+          text-align: center;
+          font-size: 11px;
+          font-weight: 650
+      }
+
+      .return-date-input:hover,
+      .return-date-input:focus,
+      .replacement-serial-input:hover,
+      .replacement-serial-input:focus {
+          border-color: #b9d9e0;
+          background: #fff;
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(42, 139, 158, .09)
+      }
+
+      .manual-date-mark,
+      .manual-serial-mark {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #2692a6;
+          box-shadow: 0 0 0 3px #e5f4f6
+      }
+
+      .return-date-wrap:not(.manual) .manual-date-mark {
+          display: none
+      }
+
+      .replacement-serial-wrap:not(.manual) .manual-serial-mark {
+          display: none
+      }
+
+      .exchange-page th:last-child,
+      .exchange-page td:last-child {
+          width: 190px !important;
+          min-width: 190px !important;
+          max-width: 190px !important
+      }
+
+      .replacement-serial-wrap {
+          min-width: 170px
+      }
+
+      .replacement-serial-input {
+          width: 150px;
+          min-width: 150px
+      }
+  </style>
+  <div class="exchange-page">
+    <section class="page-head">
+      <div class="page-title">
+        <span>SERVICE OPERATIONS</span>
+        <h1>교품/회수 관리</h1>
+        <p>교품 출고와 회수 입고 현황을 한 화면에서 추적합니다.</p>
+      </div>
+      <div class="actions">
+        {% if product == 'cart_bp_pro' %}
+          <a class="button secondary" href="/{{ product }}/exchange/lineage">교품 계보</a>
+        {% endif %}
+        <a class="button secondary"
+           href="/{{ product }}/exchange/transfer-history">이관 이력</a>
+        <button id="qualityTransfer" type="button">품질팀 이관 요청</button>
+      </div>
+    </section>
+    <div class="metric-grid">
+      <article class="metric-card">
+        <span>전체 건</span>
+        <strong>{{ total_count }}</strong>
+        <small>등록된 교품·회수</small>
+      </article>
+      <article class="metric-card">
+        <span>현재 페이지</span>
+        <strong>{{ page }}</strong>
+        <small>총 {{ total_pages or 1 }} 페이지</small>
+      </article>
+      <article class="metric-card">
+        <span>검색 조건</span>
+        <strong class="metric-code">{{ keyword or '전체' }}</strong>
+        <small>통합 검색</small>
+      </article>
+    </div>
+    <div class="workspace-toolbar">
+      <form class="filters" method="get">
+        <input type="hidden" name="order" value="{{ order }}">
+        <label class="filter-field search">
+          통합 검색<input name="keyword" value="{{ keyword }}" placeholder="현재 페이지의 모든 내용 검색">
+        </label>
+        <label class="filter-field">
+          표시 개수<select name="limit">
+          <option value="20" {% if limit == 20 %}selected{% endif %}>20</option>
+          <option value="50" {% if limit == 50 %}selected{% endif %}>50</option>
+          <option value="100" {% if limit == 100 %}selected{% endif %}>100</option>
+          </select>
+        </label>
+        <button type="submit">조회</button>
+        <a class="button secondary" href="/{{ product }}/exchange">초기화</a>
+      </form>
+      <div class="sort-toggle">
+        <span class="sort-state">현재 {{ '내림차순' if order == 'desc' else '오름차순' }}</span>
+        <a class="button secondary"
+           href="?page=1&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;order={{ 'asc' if order == 'desc' else 'desc' }}">{{ '오름차순' if order == 'desc' else '내림차순' }}으로 정렬</a>
+        <span class="filter-field">전체 대상<strong>{{ total_count }}건</strong>
+        </span>
+      </div>
+    </div>
+    <div class="data-card">
+      <div class="table-scroll">
+        <table class="spreadsheet-enhanced">
+          <thead>
+            <tr>
+              <th>
+                <input type="checkbox" id="selectAllTransfer" aria-label="전체 선택">
+              </th>
+              <th>흐름</th>
+              <th>월</th>
+              <th>주</th>
+              <th>식별코드</th>
+              <th>접수일</th>
+              <th>회수일</th>
+              {% if not bp_profile %}
+                <th>병원명</th>
+              {% endif %}
+              <th>유형(대)</th>
+              <th>유형(소)</th>
+              <th>교품</th>
+              <th>고장 S/N</th>
+              <th>LOT</th>
+              <th>Size</th>
+              <th>리드타임</th>
+              <th>교체 S/N</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cs, cx in exchange_list %}
+              {% set received_at = cs.date_only or cs.received_at %}
+              <tr>
+                <td>
+                  <input type="checkbox"
+                         class="transfer-check"
+                         value="{{ cs.serial_no or '' }}">
+                </td>
+                <td>
+                  <button class="flow-btn"
+                          type="button"
+                          data-workflow-transfer="{{ cs.transfer_no or '' }}"
+                          data-product="{{ product }}">보기</button>
+                </td>
+                <td>{{ received_at.month if received_at else '-' }}</td>
+                <td>W{{ cs.week or '-' }}</td>
+                <td>
+                  <strong>{{ cs.transfer_no or '-' }}</strong>
+                </td>
+                <td>{{ received_at.strftime("%Y-%m-%d") if received_at else '-' }}</td>
+                <td>
+                  <div class="return-date-wrap{% if cs.return_at_manual %} manual{% endif %}">
+                    <input class="return-date-input"
+                           type="text"
+                           inputmode="numeric"
+                           placeholder="yyyy-mm-dd"
+                           data-return-date="{{ cs.id }}"
+                           value="{{ cs.return_at.strftime('%Y-%m-%d') if cs.return_at else '' }}"
+                           title="8/11 또는 yyyy-mm-dd 형식으로 입력">
+                    <i class="manual-date-mark" title="직접 입력된 회수일">
+                    </i>
+                  </div>
+                </td>
+                {% if not bp_profile %}
+                  <td>{{ cs.hospital_name or '-' }}</td>
+                {% endif %}
+                <td>{{ cs.category_main or '-' }}</td>
+                <td>{{ cs.category_sub or '-' }}</td>
+                <td>
+                  <span class="status-pill purple">{{ cs.exchange_type or '-' }}</span>
+                </td>
+                <td>{{ cs.serial_no or '-' }}</td>
+                <td>{{ cs.lot or '-' }}</td>
+                <td>{{ cs.size or '-' }}</td>
+                <td data-lead-time="{{ cs.id }}">
+                  {% if received_at and cs.return_at %}{{ (cs.return_at.date() - received_at.date()).days}}일{% else %}-{% endif %}
+                </td>
+                <td>
+                  <div class="replacement-serial-wrap{% if cs.replacement_serial_no_manual %} manual{% endif %}">
+                    <input class="replacement-serial-input"
+                           type="text"
+                           data-replacement-serial="{{ cs.id }}"
+                           value="{{ cs.replacement_serial_no or '' }}"
+                           placeholder="교체 S/N">
+                    <i class="manual-serial-mark" title="직접 입력된 교체 S/N">
+                    </i>
+                  </div>
+                </td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="{{ 15 if bp_profile else 16 }}" class="empty-state">조건에 맞는 교품/회수 건이 없습니다.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="footer-row"
+         data-page="{{ page }}"
+         data-total-pages="{{ total_pages or 1 }}">
+      <span>총 {{ total_count }}건</span>
+      <span>
+        {% if page>1 %}
+          <a href="?page={{ page-1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;sort={{ sort }}&amp;order={{ order }}">이전</a>
+        {% endif %} &nbsp; {{ page }} / {{ total_pages or 1 }} &nbsp; {% if page<total_pages %}
+        <a href="?page={{ page+1 }}&amp;limit={{ limit }}&amp;keyword={{ keyword|urlencode }}&amp;sort={{ sort }}&amp;order={{ order }}">다음</a>
+{% endif %}
+</span>
+</div>
+<div class="modal-backdrop" id="transferModal">
+  <div class="modal compact-modal">
+    <span class="modal-kicker">QUALITY HANDOFF</span>
+    <h2>품질팀 이관 요청</h2>
+    <p id="selectedTransferCount">선택한 회수품을 품질팀에 이관합니다.</p>
+    <label class="filter-field">
+      이관 유형<select id="transferType">
+      <option value="set">Set</option>
+      <option value="ring">Ring</option>
+      <option value="cradle">Cradle</option>
+      </select>
+    </label>
+    <label class="urgent-check">
+      <input type="checkbox" id="transferUrgent">
+      <span>
+        <strong>긴급 요청</strong>
+        <small>품질팀에서 우선 확인이 필요한 건</small>
+      </span>
+    </label>
+    <div class="modal-actions">
+      <button class="secondary" id="transferCancel" type="button">취소</button>
+      <button id="transferSubmit" type="button">이관 요청</button>
+    </div>
+  </div>
+</div>
+<script>
+    document.querySelectorAll('[data-return-date]').forEach(input => {
+        let savedValue = input.value;
+        input.addEventListener('focus', () => savedValue = input.value);
+        input.addEventListener('change', async () => {
+            if (input.value.trim() === savedValue.trim()) return;
+            const response = await fetch(`/{{ product }}/exchange/update/${input.dataset.returnDate}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    field: 'return_at',
+                    value: input.value.trim()
+                })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                input.value = savedValue;
+                showToast(data.detail || '회수일을 저장하지 못했습니다.', 'error');
+                return
+            }
+            input.value = data.value || '';
+            savedValue = input.value;
+            input.closest('.return-date-wrap')?.classList.add('manual');
+            const leadCell = document.querySelector(`[data-lead-time="${input.dataset.returnDate}"]`);
+            if (leadCell) leadCell.textContent = data.lead_time === null ? '-' : `${data.lead_time}일`;
+            showToast('회수일을 직접 입력값으로 저장했습니다.')
+        })
+    });
+    document.querySelectorAll('[data-replacement-serial]').forEach(input => {
+        let savedValue = input.value;
+        input.addEventListener('focus', () => savedValue = input.value);
+        input.addEventListener('change', async () => {
+            if (input.value.trim() === savedValue.trim()) return;
+            const response = await fetch(`/{{ product }}/exchange/update/${input.dataset.replacementSerial}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    field: 'replacement_serial_no',
+                    value: input.value.trim()
+                })
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                input.value = savedValue;
+                showToast(data.detail || '교체 S/N를 저장하지 못했습니다.', 'error');
+                return;
+            }
+            input.value = data.value || '';
+            savedValue = input.value;
+            input.closest('.replacement-serial-wrap')?.classList.add('manual');
+            showToast('교체 S/N를 직접 입력값으로 저장했습니다.');
+        });
+    });
+    const transferModal = document.getElementById('transferModal'),
+        selected = () => [...document.querySelectorAll('.transfer-check:checked')].map(x => x.value).filter(Boolean);
+    document.getElementById('selectAllTransfer').onchange = e => document.querySelectorAll('.transfer-check').forEach(x => x.checked = e.target.checked);
+    document.getElementById('qualityTransfer').onclick = () => {
+        const items = selected();
+        if (!items.length) {
+            showToast('이관할 행을 선택해 주세요.', 'error');
+            return
+        }
+        document.getElementById('selectedTransferCount').textContent = `${items.length}건을 품질팀에 이관합니다.`;
+        transferModal.classList.add('open')
+    };
+    document.getElementById('transferCancel').onclick = () => transferModal.classList.remove('open');
+    document.getElementById('transferSubmit').onclick = async () => {
+        const r = await fetch('/{{product}}/exchange/transfer-request', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                serial_nos: selected(),
+                request_type: document.getElementById('transferType').value,
+                urgent: document.getElementById('transferUrgent').checked
+            })
+        });
+        const d = await r.json();
+        showToast(r.ok ? '품질팀 이관을 요청했습니다.' : d.detail || '요청 실패', r.ok ? 'success' : 'error');
+        if (r.ok) transferModal.classList.remove('open')
+    };
+</script>
+</div>
+{% endblock %}
